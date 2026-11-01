@@ -1,0 +1,42 @@
+name: Build Incline iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-ipa:
+    name: Build iOS IPA (Sideloadable)
+    runs-on: macos-14
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      - name: Build iOS Archive (No Codesign Required)
+        run: |
+          flutter build ipa --no-codesign
+
+      - name: Package Payload into Incline.ipa
+        run: |
+          mkdir -p build/sideload/Payload
+          cp -R build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app build/sideload/Payload/
+          cd build/sideload
+          zip -r -9 Incline.ipa Payload/
+
+      - name: Upload Incline.ipa Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Incline-iOS-IPA
+          path: build/sideload/Incline.ipa
+          retention-days: 7
