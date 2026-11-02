@@ -705,13 +705,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: context.textPrimary,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 3, top: 1),
+                Transform.translate(
+                  offset: const Offset(1, -2),
                   child: Text(
                     '®',
                     style: GoogleFonts.outfit(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 7.5,
+                      fontWeight: FontWeight.w800,
                       color: AppTheme.emerald,
                     ),
                   ),
