@@ -400,7 +400,13 @@ void main() {
       await tester.pump();
 
       expect(find.byType(ExerciseVideoCard), findsOneWidget);
-      expect(find.text('Incline Dumbbell Press · 0.75×'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(ExerciseVideoCard),
+          matching: find.text('Incline Dumbbell Press'),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

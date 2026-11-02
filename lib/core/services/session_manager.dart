@@ -155,4 +155,11 @@ class SessionManager extends ChangeNotifier {
       debugPrint('[SessionManager] Activity cleanup error: $error');
     }
   }
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    _authSubscription?.cancel();
+    super.dispose();
+  }
 }

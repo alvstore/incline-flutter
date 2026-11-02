@@ -168,7 +168,7 @@ class _AppPermissionsScreenState extends State<AppPermissionsScreen> {
             const SizedBox(height: 14),
             Text(
               'Incline Club enforces stringent zero-knowledge and on-device telemetry protocols:\n\n'
-              '• Location is used strictly while using the app to unlock turnstile gates at Incline Udaipur.\n'
+              '• Location is used strictly while using the app to unlock turnstile gates at your Incline club.\n'
               '• Health metrics (steps, heart rate, calories) stay local to your session logs and Apple Health / Google Health Connect.\n'
               '• Camera access is used solely for member identity badges and HowBody 3D posture reports.\n'
               '• Zero telemetry is sold, brokered, or transferred to third-party ad networks.',
@@ -303,7 +303,7 @@ class _AppPermissionsScreenState extends State<AppPermissionsScreen> {
                 iconColor: InclineColors.accentOrange,
                 badge: 'GATE & CLUB ENTRY',
                 title: 'Turnstile & Proximity',
-                description: 'Foreground location and BLE beacons for automated turnstile gate pass check-in at Incline Udaipur.',
+                description: 'Foreground location and BLE beacons for automated turnstile gate pass check-in at your Incline club.',
                 value: _proximityEnabled,
                 onChanged: (val) => setState(() => _proximityEnabled = val),
               ),

@@ -8,7 +8,7 @@ class EnvConfig {
   static const String tagline = 'Rise.Reflect.Repeat.';
   static const String companyName = 'Incline - Rise.Reflect.Repeat';
   static const String supportPhone = '+91 8298293003';
-  static const String defaultBranchName = 'INCLINE Udaipur Flagship';
+  static const String defaultBranchName = 'INCLINE Club';
   
   /// Live Razorpay Key configured on Incline production gateway
   static const String razorpayKeyId = 'rzp_live_SdlsRODfrr8eJL';

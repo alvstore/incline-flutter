@@ -82,8 +82,9 @@ class _HealthGoalsSheetState extends State<HealthGoalsSheet> {
     HapticFeedback.lightImpact();
     try {
       final provider = NativeHealthBridge.instance.activeProvider;
-      if (provider == null || !await provider.isAvailable()) {
-        if (!mounted) return;
+      final isAvailable = provider != null && await provider.isAvailable();
+      if (!mounted) return;
+      if (!isAvailable) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(WatchSyncService.instance.ecosystemSubtitle)),
         );

@@ -34,7 +34,7 @@ class _ExerciseVideoCardState extends State<ExerciseVideoCard> {
   bool _isInitialized = false;
   bool _isInitializing = false;
   bool _hasError = false;
-  double _playbackSpeed = 0.75;
+  final double _playbackSpeed = 0.75;
 
   bool get _isWebpOrImage {
     final lower = widget.videoUrl.toLowerCase();

@@ -157,10 +157,7 @@ class ActivityBentoGrid extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       metrics.heartRateBpm > 0
-                          ? '• Last read ' +
-                              (metrics.heartRateRecordedAt == null
-                                  ? 'recently'
-                                  : DateFormat('h:mm a').format(metrics.heartRateRecordedAt!.toLocal()))
+                          ? '• Last read ${metrics.heartRateRecordedAt == null ? "recently" : DateFormat("h:mm a").format(metrics.heartRateRecordedAt!.toLocal())}'
                           : '• No recent reading',
                       style: GoogleFonts.inter(
                         fontSize: 11,

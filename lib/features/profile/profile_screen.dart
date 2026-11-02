@@ -222,8 +222,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _connectHealthProvider() async {
     final provider = NativeHealthBridge.instance.activeProvider;
-    if (provider == null || !await provider.isAvailable()) {
-      if (!mounted) return;
+    final isAvailable = provider != null && await provider.isAvailable();
+    if (!mounted) return;
+    if (!isAvailable) {
       final message = provider is AndroidHealthConnectProvider
           ? 'Health Connect is unavailable. Install or update it, then try again.'
           : 'Apple Health is not available on this device.';
@@ -689,7 +690,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // 2. Concierge & Flagship Location Bar
+            // 2. Concierge & Club Location Bar
             ProfileContactBar(branch: _branch),
             const SizedBox(height: 16),
 
@@ -744,7 +745,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 3),
             Text(
-              'UDAIPUR FLAGSHIP • MEMBER ACCOUNT',
+              '${(_branch?.city.isNotEmpty == true ? _branch!.city : _branch?.name ?? "INCLINE CLUB").toUpperCase()} • MEMBER ACCOUNT',
               style: GoogleFonts.outfit(
                 fontSize: 8.5,
                 fontWeight: FontWeight.w600,

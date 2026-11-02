@@ -414,11 +414,7 @@ class WatchSyncService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   String _dateKey(DateTime date) =>
-      date.year.toString() +
-      '-' +
-      date.month.toString().padLeft(2, '0') +
-      '-' +
-      date.day.toString().padLeft(2, '0');
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   @override
   void dispose() {

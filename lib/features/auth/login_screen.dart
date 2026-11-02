@@ -1248,7 +1248,7 @@ class _LoginScreenState extends State<LoginScreen>
                             const SizedBox(height: 8),
                             Center(
                               child: Text(
-                                '© 2026 THE INCLINE LIFE • UDAIPUR FLAGSHIP',
+                                '© 2026 THE INCLINE LIFE • MEMBER ACCESS',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 10,
                                   letterSpacing: 1.8,

@@ -190,6 +190,7 @@ class Member {
   final String? assignedTrainerId;
   final String? biometricPhotoUrl;
   final Profile? profile;
+  final Branch? branch;
 
   const Member({
     required this.id,
@@ -201,10 +202,12 @@ class Member {
     this.assignedTrainerId,
     this.biometricPhotoUrl,
     this.profile,
+    this.branch,
   });
 
   String get fullName => profile?.fullName ?? 'Incline Member';
   String? get avatarUrl => profile?.avatarUrl ?? biometricPhotoUrl;
+  String get branchName => branch?.name ?? 'INCLINE Club';
 
   Member copyWith({
     String? id,
@@ -216,6 +219,7 @@ class Member {
     String? assignedTrainerId,
     String? biometricPhotoUrl,
     Profile? profile,
+    Branch? branch,
   }) {
     return Member(
       id: id ?? this.id,
@@ -227,6 +231,7 @@ class Member {
       assignedTrainerId: assignedTrainerId ?? this.assignedTrainerId,
       biometricPhotoUrl: biometricPhotoUrl ?? this.biometricPhotoUrl,
       profile: profile ?? this.profile,
+      branch: branch ?? this.branch,
     );
   }
 
@@ -245,6 +250,9 @@ class Member {
       profile: json['profiles'] != null
           ? Profile.fromJson(json['profiles'] as Map<String, dynamic>)
           : null,
+      branch: json['branches'] != null && json['branches'] is Map<String, dynamic>
+          ? Branch.fromJson(json['branches'] as Map<String, dynamic>)
+          : null,
     );
   }
 
@@ -258,6 +266,7 @@ class Member {
     'assigned_trainer_id': assignedTrainerId,
     'biometric_photo_url': biometricPhotoUrl,
     'profiles': profile?.toJson(),
+    if (branch != null) 'branches': branch!.toJson(),
   };
 }
 
@@ -283,8 +292,8 @@ class ClubFacility {
 
 class Branch {
   final String id;
-  final String name; // Always "INCLINE"
-  final String tagline; // Always "Rise. Reflect. Repeat."
+  final String name;
+  final String tagline;
   final String code;
   final String address;
   final String city;
@@ -299,16 +308,16 @@ class Branch {
 
   const Branch({
     required this.id,
-    this.name = 'INCLINE',
+    this.name = 'INCLINE Club',
     this.tagline = 'Rise. Reflect. Repeat.',
-    required this.code,
-    required this.address,
-    required this.city,
-    required this.state,
-    required this.postalCode,
-    required this.phone,
-    required this.email,
-    required this.gstin,
+    this.code = 'INC',
+    this.address = '',
+    this.city = '',
+    this.state = '',
+    this.postalCode = '',
+    this.phone = '',
+    this.email = '',
+    this.gstin = '',
     this.openingTime = '06:00 AM',
     this.closingTime = '10:00 PM',
     this.facilities = const [
@@ -347,23 +356,23 @@ class Branch {
         const [];
 
     return Branch(
-      id: json['id'] as String? ?? '11111111-1111-1111-1111-111111111111',
-      name: 'INCLINE',
-      tagline: 'Rise. Reflect. Repeat.',
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? 'INCLINE Club',
+      tagline: json['tagline'] as String? ?? 'Rise. Reflect. Repeat.',
       code: json['code'] as String? ?? 'INC',
       address: theme?['address'] as String? ??
           json['address'] as String? ??
-          'Plot No. 44 to 47 & 52 to 55 (Western Part), Near Kheda Circle, Sector 14, Hiran Magri, Udaipur, Rajasthan 313001',
-      city: json['city'] as String? ?? 'Udaipur',
-      state: json['state'] as String? ?? 'Rajasthan',
-      postalCode: json['postal_code'] as String? ?? '313001',
+          '',
+      city: json['city'] as String? ?? '',
+      state: json['state'] as String? ?? '',
+      postalCode: json['postal_code'] as String? ?? '',
       phone: theme?['contactPhone'] as String? ??
           json['phone'] as String? ??
-          '+91 8298293003',
+          '',
       email: theme?['contactEmail'] as String? ??
           json['email'] as String? ??
-          'info@inclinefitness.com',
-      gstin: json['gstin'] as String? ?? '08AABCI9821Q1ZZ',
+          '',
+      gstin: json['gstin'] as String? ?? '',
       openingTime: json['opening_time'] as String? ?? '06:00 AM',
       closingTime: json['closing_time'] as String? ?? '10:00 PM',
       facilities: themeFeatures.isNotEmpty
@@ -392,6 +401,22 @@ class Branch {
             ],
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'tagline': tagline,
+    'code': code,
+    'address': address,
+    'city': city,
+    'state': state,
+    'postal_code': postalCode,
+    'phone': phone,
+    'email': email,
+    'gstin': gstin,
+    'opening_time': openingTime,
+    'closing_time': closingTime,
+  };
 }
 
 class MyTrainer {

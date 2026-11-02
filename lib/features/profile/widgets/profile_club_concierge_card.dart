@@ -5,24 +5,28 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/models.dart';
 
-/// 2026 World-Class Flagship Club Concierge & Location Bento Card
+/// 2026 World-Class Club Concierge & Location Bento Card
 class ProfileClubConciergeCard extends StatelessWidget {
   final Branch? branch;
 
   const ProfileClubConciergeCard({super.key, required this.branch});
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final branchName = branch?.name.isNotEmpty == true ? branch!.name : 'INCLINE';
-    final branchAddress = branch?.address.isNotEmpty == true
-        ? branch!.address
-        : 'Plot No. 44 to 47 & 52 to 55 (Western Part), Near Kheda Circle, Sector 14, Hiran Magri';
-    final branchCity = branch?.city.isNotEmpty == true ? branch!.city : 'Udaipur';
-    final branchState = branch?.state.isNotEmpty == true ? branch!.state : 'Rajasthan';
-    final branchPostalCode = branch?.postalCode.isNotEmpty == true ? branch!.postalCode : '313001';
-    final fullAddress = '$branchAddress, $branchCity, $branchState $branchPostalCode';
+    final branchName = branch?.name.isNotEmpty == true ? branch!.name : 'INCLINE CLUB';
+    final branchAddress = branch?.address ?? '';
+    final branchCity = branch?.city ?? '';
+    final branchState = branch?.state ?? '';
+    final branchPostalCode = branch?.postalCode ?? '';
+    final addressParts = [branchAddress, branchCity, branchState, branchPostalCode]
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+    final fullAddress = addressParts.isNotEmpty
+        ? addressParts.join(', ')
+        : 'Address available via Club Concierge';
     final branchPhone = branch?.phone.isNotEmpty == true ? branch!.phone : '+91 8298293003';
-    final branchGstin = branch?.gstin.isNotEmpty == true ? branch!.gstin : '08AABCI9821Q1ZZ';
+    final branchGstin = branch?.gstin.isNotEmpty == true ? branch!.gstin : '';
     final openingTime = branch?.openingTime.isNotEmpty == true ? branch!.openingTime : '06:00 AM';
     final closingTime = branch?.closingTime.isNotEmpty == true ? branch!.closingTime : '10:00 PM';
 
@@ -65,7 +69,7 @@ class ProfileClubConciergeCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        'FLAGSHIP CLUB LOCATION',
+                        'CLUB LOCATION',
                         style: GoogleFonts.outfit(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -116,7 +120,7 @@ class ProfileClubConciergeCard extends StatelessWidget {
 
           // Club Name & Tagline
           Text(
-            '$branchName • UDAIPUR FLAGSHIP',
+            branch?.city.isNotEmpty == true ? '$branchName • ${branch!.city.toUpperCase()}' : branchName,
             style: GoogleFonts.outfit(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -175,23 +179,25 @@ class ProfileClubConciergeCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: InclineColors.cardSurface,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: InclineColors.cardBorder, width: 1),
-                ),
-                child: Text(
-                  'GSTIN: $branchGstin',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: InclineColors.textSecondary,
+              if (branchGstin.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: InclineColors.cardSurface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: InclineColors.cardBorder, width: 1),
+                  ),
+                  child: Text(
+                    'GSTIN: $branchGstin',
+                    style: GoogleFonts.spaceMono(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: InclineColors.textSecondary,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 16),

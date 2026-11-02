@@ -175,11 +175,11 @@ class _Anatomical3DVolumetricViewerState
                       ),
                     ),
                   ),
-                  if (hasModel)
+                  if (modelSource != null && !_modelFailed)
                     RepaintBoundary(
                       child: Flutter3DViewer.obj(
                         key: ValueKey(modelSource),
-                        src: modelSource!,
+                        src: modelSource,
                         scale: 5,
                         cameraX: 0,
                         cameraY: 0,

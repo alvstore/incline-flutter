@@ -17,8 +17,11 @@ class ProfileContactBar extends StatelessWidget {
 
   Future<void> _openGoogleMaps(BuildContext context) async {
     HapticFeedback.lightImpact();
-    final address = branch?.address ?? 'Incline Flagship, Sukhadia Circle, Udaipur, Rajasthan 313001';
-    final query = Uri.encodeComponent('Incline Flagship Fitness Club Udaipur $address');
+    final name = branch?.name ?? 'Incline Fitness Club';
+    final address = branch?.address ?? '';
+    final city = branch?.city ?? '';
+    final queryText = [name, address, city].where((s) => s.trim().isNotEmpty).join(' ');
+    final query = Uri.encodeComponent(queryText.isNotEmpty ? queryText : 'Incline Fitness Club');
     final mapsUrl = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
 
     try {

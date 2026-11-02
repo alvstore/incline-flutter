@@ -473,7 +473,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     required HowbodyPostureReport? posture,
     required String? pdfUrl,
   }) {
-    final equipment = body?.equipmentNo ?? posture?.equipmentNo ?? 'Flagship Udaipur Scanner';
+    final equipment = body?.equipmentNo ?? posture?.equipmentNo ?? 'Incline 3D Optical Scanner';
     final testDate = body?.testTime ?? posture?.testTime;
     final dateStr = testDate != null
         ? '${testDate.day.toString().padLeft(2, '0')}/${testDate.month.toString().padLeft(2, '0')}/${testDate.year} · ${testDate.hour % 12 == 0 ? 12 : testDate.hour % 12}:${testDate.minute.toString().padLeft(2, '0')} ${testDate.hour >= 12 ? 'PM' : 'AM'}'
@@ -650,7 +650,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Step onto the HowBody 3D scanner at Incline Udaipur Flagship to calibrate your full volumetric body contour, posture deviations, and body composition.\n\nAll automated data and multi-angle photos will instantly sync to your app profile.',
+            'Step onto the HowBody 3D scanner at your Incline club to calibrate your full volumetric body contour, posture deviations, and body composition.\n\nAll automated data and multi-angle photos will instantly sync to your app profile.',
             style: GoogleFonts.inter(
               fontSize: 12,
               color: isDark ? Colors.white60 : Colors.black54,

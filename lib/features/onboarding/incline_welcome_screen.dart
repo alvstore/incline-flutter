@@ -105,7 +105,7 @@ class _InclineWelcomeScreenState extends State<InclineWelcomeScreen>
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'High-performance athletic programming, real-time 3D telemetry, and clinical biometrics engineered for Udaipur members.',
+                          'High-performance athletic programming, real-time 3D telemetry, and clinical biometrics engineered for club members.',
                           style: GoogleFonts.inter(
                             color: InclineColors.textSecondary,
                             fontSize: 13,
@@ -118,7 +118,7 @@ class _InclineWelcomeScreenState extends State<InclineWelcomeScreen>
                   ),
                   const SizedBox(width: 36),
 
-                  // Right Column: Flagship Motto and Call To Action
+                  // Right Column: Brand Motto and Call To Action
                   Expanded(
                     flex: 5,
                     child: Container(
@@ -144,7 +144,7 @@ class _InclineWelcomeScreenState extends State<InclineWelcomeScreen>
                           ),
                           const SizedBox(height: 18),
                           _buildPrimaryAction(
-                            label: 'Enter Member Flagship',
+                            label: 'Enter Club',
                             onPressed: _continueToLogin,
                           ),
                         ],
@@ -162,7 +162,7 @@ class _InclineWelcomeScreenState extends State<InclineWelcomeScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Udaipur Flagship Status Pill + Refined Brand Motto
+                // 1. Club Status Pill + Refined Brand Motto
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -206,7 +206,7 @@ class _InclineWelcomeScreenState extends State<InclineWelcomeScreen>
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 340),
                   child: Text(
-                    'High-performance athletic programming, real-time 3D telemetry, and clinical biometrics engineered for Udaipur members.',
+                    'High-performance athletic programming, real-time 3D telemetry, and clinical biometrics engineered for club members.',
                     style: GoogleFonts.inter(
                       color: InclineColors.textSecondary,
                       fontSize: 14,
@@ -219,7 +219,7 @@ class _InclineWelcomeScreenState extends State<InclineWelcomeScreen>
 
                 // 4. Premium High-End Action Button with Specular Glow & Smooth Border
                 _buildPrimaryAction(
-                  label: 'Enter Member Flagship',
+                  label: 'Enter Club',
                   onPressed: _continueToLogin,
                 ),
               ],
@@ -253,7 +253,7 @@ class _InclineWelcomeScreenState extends State<InclineWelcomeScreen>
           ),
           const SizedBox(width: 7.5),
           Text(
-            'UDAIPUR FLAGSHIP',
+            'MEMBER ACCESS',
             style: GoogleFonts.outfit(
               fontSize: 10,
               fontWeight: FontWeight.w700,

@@ -226,7 +226,7 @@ class _ProfileRegistrationDetailsCardState
     final addressStr = (prof != null && prof.formattedAddress.isNotEmpty && prof.formattedAddress != 'Not Provided')
         ? prof.formattedAddress
         : (isPreview
-            ? 'Plot 44-55, Near Kheda Circle, Hiran Magri Sector 14, Udaipur, Rajasthan 313001'
+            ? 'Club Member Address'
             : 'Not Provided');
     final aadhaarRaw = (rawAadhaar != null && rawAadhaar.isNotEmpty)
         ? rawAadhaar

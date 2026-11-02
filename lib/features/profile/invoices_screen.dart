@@ -162,10 +162,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                     letterSpacing: 0.5,
                   ),
                 ),
-                Text(
-                  _branch?.address ?? 'Plot No. 44 to 47 & 52 to 55, Near Kheda Circle, Sector 14, Hiran Magri, Udaipur, Rajasthan 313001',
-                  style: GoogleFonts.outfit(fontSize: 10.5, color: context.textMuted),
-                ),
+                if ((_branch?.address ?? '').isNotEmpty)
+                  Text(
+                    _branch!.address,
+                    style: GoogleFonts.outfit(fontSize: 10.5, color: context.textMuted),
+                  ),
                 if (inv.hasGst) ...[
                   const SizedBox(height: 2),
                   Text(

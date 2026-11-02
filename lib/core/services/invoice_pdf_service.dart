@@ -45,11 +45,10 @@ class InvoicePdfService {
     final memberEmail = member?.profile?.email ?? SupabaseService.instance.currentUser?.email ?? '';
 
     // Auto-populated club metadata from backend (never hardcoded)
-    final clubAddress = branch?.address ??
-        'Plot No. 44 to 47 & 52 to 55 (Western Part), Near Kheda Circle, Sector 14, Hiran Magri, Udaipur, Rajasthan 313001';
-    final clubGstin = branch?.gstin ?? '08AABCI9821Q1ZZ';
+    final clubAddress = branch?.address ?? '';
+    final clubGstin = branch?.gstin ?? '';
     final clubPhone = branch?.phone ?? '+91 8298293003';
-    final clubEmail = branch?.email ?? 'info@inclinefitness.com';
+    final clubEmail = branch?.email ?? 'info@theincline.in';
     final clubHours = 'Operating Hours: ${branch?.openingTime ?? "06:00 AM"} - ${branch?.closingTime ?? "10:00 PM"} | 24/7 Access';
 
     final issueDateStr = DateFormat('dd MMMM yyyy, hh:mm a').format(invoice.createdAt);
@@ -448,9 +447,15 @@ class InvoicePdfService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    invoice.hasGst
-                        ? 'INCLINE | Official Tax Receipt | Udaipur, Rajasthan'
-                        : 'INCLINE | Official Receipt | Udaipur, Rajasthan',
+                    () {
+                      final branchCity = branch?.city ?? '';
+                      final branchState = branch?.state ?? '';
+                      final locTag = [branchCity, branchState].where((s) => s.trim().isNotEmpty).join(', ');
+                      final locSuffix = locTag.isNotEmpty ? ' | $locTag' : '';
+                      return invoice.hasGst
+                          ? 'INCLINE | Official Tax Receipt$locSuffix'
+                          : 'INCLINE | Official Receipt$locSuffix';
+                    }(),
                     style: pw.TextStyle(fontSize: 7.5, color: textMuted),
                   ),
                   pw.Text(

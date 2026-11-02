@@ -363,7 +363,7 @@ class SupabaseService {
     try {
       final res = await client
           .from('members')
-          .select('*, profiles:profiles!members_user_id_profiles_fkey(*)')
+          .select('*, profiles:profiles!members_user_id_profiles_fkey(*), branches:branch_id(*)')
           .eq('user_id', userId)
           .maybeSingle()
           .timeout(const Duration(seconds: 4));
@@ -380,7 +380,7 @@ class SupabaseService {
     try {
       final res = await client
           .from('members')
-          .select('*, profiles:profiles!members_user_id_profiles_fkey(*)')
+          .select('*, profiles:profiles!members_user_id_profiles_fkey(*), branches:branch_id(*)')
           .eq('user_id', user.id)
           .maybeSingle()
           .timeout(const Duration(seconds: 4));
@@ -511,38 +511,96 @@ class SupabaseService {
     return null;
   }
 
-  /// Fetches branch and organization branding (address, GSTIN, working hours, facilities)
-  /// directly from backend Supabase RPC & tables (auto-populated, never hardcoded)
-  Future<Branch> fetchBranch(String? branchId) async {
-    final targetBranchId = (branchId != null && branchId.isNotEmpty)
-        ? branchId
-        : '11111111-1111-1111-1111-111111111111';
-
-    Map<String, dynamic> merged = {};
-
-    // 1. Fetch organization branding via backend RPC (name, address, tagline, phone, facilities)
-    try {
-      final brandRows = await client.rpc('get_org_branding', params: {'_branch_id': targetBranchId});
-      if (brandRows is List && brandRows.isNotEmpty) {
-        final bMap = brandRows.first as Map<String, dynamic>;
-        merged.addAll(bMap);
-      }
-    } catch (e) {
-      debugPrint('[INCLINE] get_org_branding notice: $e');
+  /// Dynamically resolves the effective branch ID.
+  /// 1. Uses explicit branchId if provided.
+  /// 2. Uses cached authenticated member's branchId.
+  /// 3. Queries member's branch_id from Supabase for current auth user.
+  /// 4. Queries the first active branch from public.branches.
+  Future<String?> resolveEffectiveBranchId([String? branchId]) async {
+    if (branchId != null && branchId.trim().isNotEmpty) {
+      return branchId.trim();
     }
+    if (_cachedCurrentMember?.branchId != null &&
+        _cachedCurrentMember!.branchId!.trim().isNotEmpty) {
+      return _cachedCurrentMember!.branchId!.trim();
+    }
+    if (currentUser != null) {
+      try {
+        final res = await client
+            .from('members')
+            .select('branch_id')
+            .eq('user_id', currentUser!.id)
+            .maybeSingle();
+        final bId = res?['branch_id'] as String?;
+        if (bId != null && bId.trim().isNotEmpty) {
+          return bId.trim();
+        }
+      } catch (_) {}
+    }
+    try {
+      final b = await client
+          .from('branches')
+          .select('id')
+          .eq('is_active', true)
+          .order('created_at')
+          .limit(1)
+          .maybeSingle();
+      final activeId = b?['id'] as String?;
+      if (activeId != null && activeId.trim().isNotEmpty) {
+        return activeId.trim();
+      }
+    } catch (_) {}
+    return null;
+  }
 
-    // 2. Fetch specific branch details from branches table (gstin, opening/closing hours)
+  /// Fetches all active gym branches from Supabase
+  Future<List<Branch>> fetchBranches() async {
     try {
       final res = await client
           .from('branches')
           .select('*')
-          .eq('id', targetBranchId)
-          .maybeSingle();
-      if (res != null) {
-        merged.addAll(res);
-      }
+          .eq('is_active', true)
+          .order('name');
+      final list = res as List;
+      return list.map((b) => Branch.fromJson(b as Map<String, dynamic>)).toList();
     } catch (e) {
-      debugPrint('[INCLINE] branches table fetch notice: $e');
+      debugPrint('[INCLINE] fetchBranches error: $e');
+      return [];
+    }
+  }
+
+  /// Fetches branch and organization branding (address, GSTIN, working hours, facilities)
+  /// directly from backend Supabase RPC & tables dynamically
+  Future<Branch> fetchBranch(String? branchId) async {
+    final targetBranchId = await resolveEffectiveBranchId(branchId);
+
+    Map<String, dynamic> merged = {};
+
+    if (targetBranchId != null && targetBranchId.isNotEmpty) {
+      // 1. Fetch organization branding via backend RPC (name, address, tagline, phone, facilities)
+      try {
+        final brandRows = await client.rpc('get_org_branding', params: {'_branch_id': targetBranchId});
+        if (brandRows is List && brandRows.isNotEmpty) {
+          final bMap = brandRows.first as Map<String, dynamic>;
+          merged.addAll(bMap);
+        }
+      } catch (e) {
+        debugPrint('[INCLINE] get_org_branding notice: $e');
+      }
+
+      // 2. Fetch specific branch details from branches table (gstin, opening/closing hours)
+      try {
+        final res = await client
+            .from('branches')
+            .select('*')
+            .eq('id', targetBranchId)
+            .maybeSingle();
+        if (res != null) {
+          merged.addAll(res);
+        }
+      } catch (e) {
+        debugPrint('[INCLINE] branches table fetch notice: $e');
+      }
     }
 
     // Fallback global branding if branch-specific was empty
@@ -588,13 +646,11 @@ class SupabaseService {
     Map<String, dynamic>? shippingAddress,
   }) async {
     try {
-      final effectiveBranchId = (branchId != null && branchId.isNotEmpty)
-          ? branchId
-          : '11111111-1111-1111-1111-111111111111';
+      final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
       final payload = {
         'order_number': orderNumber,
-        'branch_id': effectiveBranchId,
+        if (effectiveBranchId != null) 'branch_id': effectiveBranchId,
         'member_id': memberId,
         'items': items,
         'subtotal': subtotal,
@@ -630,9 +686,7 @@ class SupabaseService {
     required double subtotal,
     String? branchId,
   }) async {
-    final effectiveBranchId = (branchId != null && branchId.isNotEmpty)
-        ? branchId
-        : '11111111-1111-1111-1111-111111111111';
+    final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
     try {
       final res = await client.rpc('validate_coupon', params: {
@@ -661,9 +715,7 @@ class SupabaseService {
     String? referenceId,
     String? idempotencyKey,
   }) async {
-    final effectiveBranchId = (branchId != null && branchId.isNotEmpty)
-        ? branchId
-        : '11111111-1111-1111-1111-111111111111';
+    final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
     try {
       final res = await client.rpc('redeem_coupon', params: {
@@ -721,9 +773,7 @@ class SupabaseService {
     String? transactionId,
     String? notes,
   }) async {
-    final effectiveBranchId = (branchId != null && branchId.isNotEmpty)
-        ? branchId
-        : '11111111-1111-1111-1111-111111111111';
+    final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
     try {
       final res = await client.rpc('record_payment', params: {
@@ -762,9 +812,7 @@ class SupabaseService {
     Map<String, dynamic>? shippingAddress,
     bool isPaid = false,
   }) async {
-    final effectiveBranchId = (branchId != null && branchId.isNotEmpty)
-        ? branchId
-        : '11111111-1111-1111-1111-111111111111';
+    final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
     final curMember = _cachedCurrentMember ?? (currentUser != null ? await fetchCurrentMember() : null);
     final effectiveMemberId = memberId ?? curMember?.id;
@@ -924,15 +972,13 @@ class SupabaseService {
     String gateway = 'razorpay',
   }) async {
     try {
-      final effectiveBranchId = (branchId != null && branchId.isNotEmpty)
-          ? branchId
-          : '11111111-1111-1111-1111-111111111111';
+      final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
       final res = await client.functions.invoke(
         'create-payment-order',
         body: {
           'invoiceId': invoiceId,
-          'branchId': effectiveBranchId,
+          if (effectiveBranchId != null) 'branchId': effectiveBranchId,
           'gateway': gateway,
         },
       );
@@ -954,16 +1000,14 @@ class SupabaseService {
     String? branchId,
   }) async {
     try {
-      final effectiveBranchId = (branchId != null && branchId.isNotEmpty)
-          ? branchId
-          : '11111111-1111-1111-1111-111111111111';
+      final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
       final res = await client.functions.invoke(
         'create-razorpay-link',
         body: {
           'invoiceId': invoiceId,
           'amount': amount,
-          'branchId': effectiveBranchId,
+          if (effectiveBranchId != null) 'branchId': effectiveBranchId,
         },
       );
 
@@ -988,16 +1032,14 @@ class SupabaseService {
     String? branchId,
   }) async {
     try {
-      final effectiveBranchId = (branchId != null && branchId.isNotEmpty)
-          ? branchId
-          : '11111111-1111-1111-1111-111111111111';
+      final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
       final res = await client.functions.invoke(
         'verify-payment',
         body: {
           'gateway': 'razorpay',
           'invoiceId': invoiceId,
-          'branchId': effectiveBranchId,
+          if (effectiveBranchId != null) 'branchId': effectiveBranchId,
           'razorpay_payment_id': razorpayPaymentId,
           'razorpay_order_id': razorpayOrderId,
           'razorpay_signature': razorpaySignature,
@@ -1115,14 +1157,19 @@ class SupabaseService {
     String? branchId,
   }) async {
     final dateStr = date.toIso8601String().substring(0, 10);
+    final targetBranchId = await resolveEffectiveBranchId(branchId);
     List<RecoverySlot> slots = [];
 
     try {
-      final res = await client
+      var query = client
           .from('benefit_slots')
           .select('*, facilities(name), benefit_types(name)')
-          .eq('slot_date', dateStr)
-          .order('start_time', ascending: true);
+          .eq('slot_date', dateStr);
+      if (targetBranchId != null && targetBranchId.isNotEmpty) {
+        query = query.eq('branch_id', targetBranchId);
+      }
+
+      final res = await query.order('start_time', ascending: true);
 
       final rawList = res as List;
 
@@ -1279,11 +1326,12 @@ class SupabaseService {
     bool deferSettlement = false,
   }) async {
     try {
+      final effectiveBranchId = await resolveEffectiveBranchId(branchId);
       final res = await client.rpc('purchase_benefit_credits', params: {
         'p_member_id': memberId,
         'p_membership_id': membershipId,
         'p_package_id': packageId,
-        'p_branch_id': branchId ?? '11111111-1111-1111-1111-111111111111',
+        'p_branch_id': effectiveBranchId,
         'p_payment_method': paymentMethod,
         'p_idempotency_key': 'addon_${packageId}_${DateTime.now().millisecondsSinceEpoch}',
         'p_defer_settlement': deferSettlement,
@@ -2868,11 +2916,12 @@ class SupabaseService {
   /// Records member gate check-in via mobile app or NFC pass
   Future<bool> recordCheckIn(String memberId) async {
     final now = ISTDateUtils.toIST(DateTime.now());
+    final effectiveBranchName = _cachedCurrentMember?.branch?.name ?? 'INCLINE Club';
     _localTodayCheckIn = AttendanceRecord(
       id: 'att_live_${DateTime.now().millisecondsSinceEpoch}',
       checkInTime: now,
       checkOutTime: null,
-      branchName: EnvConfig.defaultBranchName,
+      branchName: effectiveBranchName,
       gateCheckIn: 'Mobile Gate Pass • Smart Turnstile North',
       gateCheckOut: 'Active Session in Gym',
       facialConfidence: '100% (Mobile Verified)',
@@ -2903,7 +2952,7 @@ class SupabaseService {
     try {
       final res = await client
           .from('member_attendance')
-          .select('*')
+          .select('*, branches:branch_id(name)')
           .eq('member_id', effectiveMemberId)
           .order('check_in', ascending: false)
           .limit(100);
@@ -2915,12 +2964,15 @@ class SupabaseService {
           final checkOutStr = a['check_out'] as String? ?? a['check_out_time'] as String?;
           final method = a['check_in_method'] as String? ?? 'optical';
           final isOptical = method == 'biometric' || method == 'optical';
+          final rowBranchName = (a['branches'] is Map ? (a['branches'] as Map)['name'] as String? : null) ??
+              _cachedCurrentMember?.branch?.name ??
+              'INCLINE Club';
 
           return AttendanceRecord(
             id: a['id'] as String? ?? '',
             checkInTime: ISTDateUtils.parseServerTimeToIST(checkInStr),
             checkOutTime: checkOutStr != null ? ISTDateUtils.parseServerTimeToIST(checkOutStr) : null,
-            branchName: EnvConfig.defaultBranchName,
+            branchName: rowBranchName,
             gateCheckIn: isOptical ? 'MIPS Optical Scanner • Turnstile North' : 'Front Desk Check-In',
             gateCheckOut: checkOutStr != null ? 'MIPS Optical Scanner • Turnstile South' : 'Active Session in Gym',
             facialConfidence: isOptical ? '99.9%' : '100% (Verified)',
@@ -3267,9 +3319,7 @@ class SupabaseService {
 
       final curMember = _cachedCurrentMember ?? (currentUser != null ? await fetchCurrentMember() : null);
       final effectiveMemberId = (curMember != null && curMember.id.isNotEmpty) ? curMember.id : memberId;
-      final effectiveBranchId = (curMember?.branchId != null && curMember!.branchId!.isNotEmpty)
-          ? curMember.branchId!
-          : (branchId ?? '11111111-1111-1111-1111-111111111111');
+      final effectiveBranchId = await resolveEffectiveBranchId(branchId);
 
       final isPlanRequest = category == 'diet' ||
           category == 'workout' ||
@@ -3493,9 +3543,10 @@ class SupabaseService {
     bool consentForTestimonial = false,
   }) async {
     try {
+      final effectiveBranchId = await resolveEffectiveBranchId(branchId);
       await client.from('feedback').insert({
         'member_id': memberId,
-        'branch_id': branchId ?? '11111111-1111-1111-1111-111111111111',
+        if (effectiveBranchId != null) 'branch_id': effectiveBranchId,
         'rating': rating,
         'category': category,
         'feedback_text': comment,
@@ -3531,16 +3582,22 @@ class SupabaseService {
   // GROUP FITNESS & STUDIO CLASSES
   // ---------------------------------------------------------------------------
 
-  Future<List<GymClass>> fetchGymClasses({DateTime? date}) async {
+  Future<List<GymClass>> fetchGymClasses({DateTime? date, String? branchId}) async {
     final targetDate = date ?? DateTime.now();
     final dateStr = targetDate.toIso8601String().substring(0, 10);
+    final targetBranchId = await resolveEffectiveBranchId(branchId);
     try {
-      final res = await client
+      var query = client
           .from('classes')
           .select('*, parent:class_types!classes_class_type_id_fkey(id, name, image_url, category, description, default_venue), trainer:trainers(id, user_id, profiles(full_name))')
           .eq('session_date', dateStr)
-          .isFilter('cancelled_at', null)
-          .order('scheduled_at', ascending: true);
+          .isFilter('cancelled_at', null);
+
+      if (targetBranchId != null && targetBranchId.isNotEmpty) {
+        query = query.eq('branch_id', targetBranchId);
+      }
+
+      final res = await query.order('scheduled_at', ascending: true);
 
       final list = res as List;
       return list.map((c) => GymClass.fromJson(c as Map<String, dynamic>, date: targetDate)).toList();
@@ -3936,14 +3993,12 @@ class SupabaseService {
   /// Queries whether referral reward claims and payouts are currently active for the branch.
   /// Server-side gating authority: Never calculated on the client.
   Future<bool> getReferralRewardsEnabled(String? branchId) async {
-    final targetBranchId = (branchId != null && branchId.isNotEmpty)
-        ? branchId
-        : '11111111-1111-1111-1111-111111111111';
+    final targetBranchId = await resolveEffectiveBranchId(branchId);
 
     // 1. Check RPC get_referral_rewards_enabled
     try {
       final res = await client.rpc('get_referral_rewards_enabled', params: {
-        'p_branch_id': targetBranchId,
+        if (targetBranchId != null) 'p_branch_id': targetBranchId,
       });
       if (res is bool) return res;
     } catch (e) {
@@ -3952,11 +4007,13 @@ class SupabaseService {
 
     // 2. Query branch referral settings directly (is_active switch)
     try {
-      final list = await client
+      var query = client
           .from('referral_settings')
-          .select('is_active, is_enabled')
-          .eq('branch_id', targetBranchId)
-          .limit(1);
+          .select('is_active, is_enabled');
+      if (targetBranchId != null) {
+        query = query.eq('branch_id', targetBranchId);
+      }
+      final list = await query.limit(1);
       if (list.isNotEmpty) {
         final row = list.first;
         return row['is_active'] as bool? ?? row['is_enabled'] as bool? ?? false;

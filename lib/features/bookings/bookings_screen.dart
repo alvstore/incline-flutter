@@ -256,7 +256,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       razorpayPaymentId: paymentId,
       razorpayOrderId: orderId,
       razorpaySignature: signature,
-      branchId: widget.member?.branchId ?? '11111111-1111-1111-1111-111111111111',
+      branchId: widget.member?.branchId,
     );
 
     _dismissVerificationDialog();
@@ -372,7 +372,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       memberId: effectiveMemberId,
       membershipId: effectiveMembershipId,
       packageId: packageId,
-      branchId: widget.member?.branchId ?? '11111111-1111-1111-1111-111111111111',
+      branchId: widget.member?.branchId,
       paymentMethod: 'card',
       deferSettlement: true,
     );
@@ -398,7 +398,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
     // 2. Request trusted payment order from backend edge function
     final paymentOrder = await SupabaseService.instance.createPaymentOrder(
       invoiceId: invoiceId,
-      branchId: widget.member?.branchId ?? '11111111-1111-1111-1111-111111111111',
+      branchId: widget.member?.branchId,
       gateway: 'razorpay',
     );
 
@@ -1651,10 +1651,10 @@ class _BookingsScreenState extends State<BookingsScreen> {
     final banner = (item.bannerUrl != null && item.bannerUrl!.isNotEmpty)
         ? item.bannerUrl!
         : (item.title.toLowerCase().contains('pilates')
-            ? 'https://iyqqpbvnszyrrgerniog.supabase.co/storage/v1/object/public/template-media/class-banners/11111111-1111-1111-1111-111111111111/7e9e0f59-fa1c-409e-98a1-4dd6672d397f.jpg'
+            ? 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80'
             : (item.title.toLowerCase().contains('yoga')
-                ? 'https://iyqqpbvnszyrrgerniog.supabase.co/storage/v1/object/public/template-media/class-banners/11111111-1111-1111-1111-111111111111/ca0c22d7-fc0c-4283-a710-c63d25adcdce.jpg'
-                : 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80'));
+                ? 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&q=80'
+                : 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80'));
 
     return BentoCard(
       padding: EdgeInsets.zero,
