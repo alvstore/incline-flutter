@@ -3582,6 +3582,27 @@ class SupabaseService {
   // GROUP FITNESS & STUDIO CLASSES
   // ---------------------------------------------------------------------------
 
+  /// Fetches active class types configured in the club for dynamic filtering
+  Future<List<Map<String, dynamic>>> fetchActiveBranchClassTypes({String? branchId}) async {
+    final targetBranchId = await resolveEffectiveBranchId(branchId);
+    try {
+      var query = client
+          .from('class_types')
+          .select('id, name, category, image_url, sort_order')
+          .eq('is_active', true);
+
+      if (targetBranchId != null && targetBranchId.isNotEmpty) {
+        query = query.eq('branch_id', targetBranchId);
+      }
+
+      final res = await query.order('sort_order', ascending: true).order('name', ascending: true);
+      return (res as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      debugPrint('[INCLINE] fetchActiveBranchClassTypes error: $e');
+      return [];
+    }
+  }
+
   Future<List<GymClass>> fetchGymClasses({DateTime? date, String? branchId}) async {
     final targetDate = date ?? DateTime.now();
     final dateStr = targetDate.toIso8601String().substring(0, 10);

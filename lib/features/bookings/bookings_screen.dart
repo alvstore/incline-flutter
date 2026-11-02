@@ -131,6 +131,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
   BuildContext? _verificationDialogContext;
 
   List<GymClass> _classes = [];
+  List<Map<String, dynamic>> _branchClassTypes = [];
   List<RecoverySlot> _recoverySlots = [];
   List<BenefitCredit> _benefitCredits = [];
   List<BenefitPackage> _benefitPackages = [];
@@ -479,6 +480,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
         SupabaseService.instance.fetchActiveMembership(memberId),
         SupabaseService.instance.fetchMyReservations(memberId),
         SupabaseService.instance.fetchBenefitPackages(),
+        SupabaseService.instance.fetchActiveBranchClassTypes(),
       ]);
 
       if (mounted) {
@@ -489,6 +491,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
           _membership = results[3] as Membership?;
           _myReservations = results[4] as List<MemberReservation>;
           _benefitPackages = results[5] as List<BenefitPackage>;
+          _branchClassTypes = results[6] as List<Map<String, dynamic>>;
           _isLoading = false;
           _errorMessage = null;
         });
@@ -1258,17 +1261,31 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Widget build(BuildContext context) {
     final dateRailStart = DateUtils.dateOnly(DateTime.now());
 
+    // Dynamic class filter categories
+    final availableCategories = _getDynamicClassCategories();
+
+    // Reset filter if active filter no longer exists in available categories
+    if (_activeClassFilter != 'all' && !availableCategories.any((cat) => cat['id'] == _activeClassFilter)) {
+      _activeClassFilter = 'all';
+    }
+
     // Filter classes (past classes on today or earlier dates are hidden from active booking)
     final filteredClasses = _classes.where((c) {
       if (_isClassInPast(c)) return false;
       if (_activeClassFilter == 'all') return true;
-      if (_activeClassFilter == 'pilates') {
-        return c.title.toLowerCase().contains('pilates') || c.category.toLowerCase().contains('pilates');
-      }
-      if (_activeClassFilter == 'yoga') {
-        return c.title.toLowerCase().contains('yoga') || c.category.toLowerCase().contains('yoga') || c.category.toLowerCase().contains('mind');
-      }
-      return true;
+      final selectedCategory = availableCategories.firstWhere(
+        (cat) => cat['id'] == _activeClassFilter,
+        orElse: () => {'id': '', 'label': ''},
+      );
+      final filterId = _activeClassFilter.toLowerCase();
+      final filterLabel = (selectedCategory['label'] ?? '').toLowerCase();
+
+      final classTitle = c.title.toLowerCase();
+      final classCategory = c.category.toLowerCase();
+
+      return classTitle.contains(filterId) ||
+          classCategory.contains(filterId) ||
+          (filterLabel.isNotEmpty && (classTitle.contains(filterLabel) || classCategory.contains(filterLabel)));
     }).toList();
 
     // Filter recovery slots with time period support (past slots for today or earlier dates are hidden)
@@ -1508,7 +1525,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 ),
               ),
 
-              // Category Filter Pills
+              // Category Filter Pills (Dynamically populated from backend class types and current classes)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 6),
                 child: SingleChildScrollView(
@@ -1516,14 +1533,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   physics: const BouncingScrollPhysics(),
                   child: _selectedSection == 0
                       ? Row(
-                          children: [
-                            _classFilterChip('all', 'All Classes', Icons.grid_view_rounded),
-                            const SizedBox(width: 8),
-                            _classFilterChip('pilates', 'Reformer Pilates', Icons.self_improvement_rounded),
-                            const SizedBox(width: 8),
-                            _classFilterChip('yoga', 'Yoga & Mobility', Icons.spa_rounded),
-                            const SizedBox(width: 12),
-                          ],
+                          children: availableCategories.map((cat) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: _classFilterChip(
+                                cat['id'] as String,
+                                cat['label'] as String,
+                                cat['icon'] as IconData,
+                              ),
+                            );
+                          }).toList(),
                         )
                       : Row(
                           children: [
@@ -2448,6 +2467,90 @@ class _BookingsScreenState extends State<BookingsScreen> {
         ],
       ),
     );
+  }
+
+  /// Dynamically computes active class categories from Supabase class_types and loaded classes
+  List<Map<String, dynamic>> _getDynamicClassCategories() {
+    final categories = <Map<String, dynamic>>[
+      {
+        'id': 'all',
+        'label': 'All Classes',
+        'icon': Icons.grid_view_rounded,
+      },
+    ];
+
+    final seenLabels = <String>{};
+
+    // 1. Add categories configured in Supabase class_types
+    for (final ct in _branchClassTypes) {
+      final name = (ct['name'] as String? ?? '').trim();
+      final cat = (ct['category'] as String? ?? '').trim();
+      final label = name.isNotEmpty ? name : cat;
+      if (label.isNotEmpty && !seenLabels.contains(label.toLowerCase())) {
+        seenLabels.add(label.toLowerCase());
+        categories.add({
+          'id': label.toLowerCase(),
+          'label': label,
+          'icon': _resolveCategoryIcon(label),
+        });
+      }
+    }
+
+    // 2. Add any additional categories present in today's active classes
+    for (final c in _classes) {
+      final label = c.category.trim();
+      if (label.isNotEmpty && !seenLabels.contains(label.toLowerCase())) {
+        seenLabels.add(label.toLowerCase());
+        categories.add({
+          'id': label.toLowerCase(),
+          'label': label,
+          'icon': _resolveCategoryIcon(label),
+        });
+      }
+    }
+
+    // 3. Fallback defaults if no backend classes or class_types exist yet
+    if (categories.length == 1) {
+      return [
+        {
+          'id': 'all',
+          'label': 'All Classes',
+          'icon': Icons.grid_view_rounded,
+        },
+        {
+          'id': 'pilates',
+          'label': 'Reformer Pilates',
+          'icon': Icons.self_improvement_rounded,
+        },
+        {
+          'id': 'yoga',
+          'label': 'Yoga & Mobility',
+          'icon': Icons.spa_rounded,
+        },
+      ];
+    }
+
+    return categories;
+  }
+
+  /// Maps category labels to intuitive Material symbols
+  IconData _resolveCategoryIcon(String category) {
+    final lower = category.toLowerCase();
+    if (lower.contains('pilates')) return Icons.self_improvement_rounded;
+    if (lower.contains('yoga') || lower.contains('mind')) return Icons.spa_rounded;
+    if (lower.contains('zumba') || lower.contains('dance')) return Icons.music_note_rounded;
+    if (lower.contains('aerobic') || lower.contains('cardio')) return Icons.directions_run_rounded;
+    if (lower.contains('spin') || lower.contains('cycle') || lower.contains('bike')) return Icons.directions_bike_rounded;
+    if (lower.contains('hiit') || lower.contains('strength') || lower.contains('weight') || lower.contains('conditioning')) {
+      return Icons.fitness_center_rounded;
+    }
+    if (lower.contains('mobility') || lower.contains('stretch') || lower.contains('recovery')) {
+      return Icons.accessibility_new_rounded;
+    }
+    if (lower.contains('box') || lower.contains('combat') || lower.contains('martial')) {
+      return Icons.sports_mma_rounded;
+    }
+    return Icons.sports_gymnastics_rounded;
   }
 
   Widget _classFilterChip(String id, String label, IconData icon) {

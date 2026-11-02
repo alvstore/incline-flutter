@@ -1531,12 +1531,20 @@ class GymClass {
       categoryDisplay = 'Reformer Pilates';
     } else if (cat.contains('yoga') || name.toLowerCase().contains('yoga')) {
       categoryDisplay = 'Yoga & Mind';
+    } else if (cat.contains('zumba') || name.toLowerCase().contains('zumba')) {
+      categoryDisplay = 'Zumba';
+    } else if (cat.contains('aerobic') || name.toLowerCase().contains('aerobic')) {
+      categoryDisplay = 'Aerobics';
     } else if (cat.contains('spin') || name.toLowerCase().contains('spin')) {
       categoryDisplay = 'Power Spin';
     } else if (cat.contains('hiit') || name.toLowerCase().contains('hiit')) {
       categoryDisplay = 'Functional HIIT';
+    } else if (cat.contains('mobility') || name.toLowerCase().contains('mobility')) {
+      categoryDisplay = 'Mobility';
+    } else if (cat.contains('dance') || name.toLowerCase().contains('dance')) {
+      categoryDisplay = 'Dance Fitness';
     } else {
-      categoryDisplay = parent?['name'] as String? ?? 'Studio Class';
+      categoryDisplay = parent?['name'] as String? ?? (cat.isNotEmpty && cat != 'other' ? cat : 'Studio Class');
     }
 
     final bannerUrl = json['banner_url'] as String? ?? parent?['image_url'] as String?;
