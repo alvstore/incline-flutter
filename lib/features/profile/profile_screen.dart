@@ -746,13 +746,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     HapticFeedback.lightImpact();
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: context.cardElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -764,22 +765,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Container(
-                width: 52,
-                height: 52,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: AppTheme.emerald.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                   border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.3), width: 1.5),
                 ),
-                child: const Icon(Icons.verified_user_rounded, color: AppTheme.emerald, size: 26),
+                child: const Icon(Icons.verified_user_rounded, color: AppTheme.emerald, size: 24),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Text(
                 'Biometric Turnstile Identity',
                 style: GoogleFonts.outfit(
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: FontWeight.w800,
                   color: context.textPrimary,
                   letterSpacing: -0.2,
@@ -790,13 +791,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 'Your profile photo is synchronized with Incline\'s optical turnstiles and MIPS biometric access gates. To maintain facility safety and prevent pass sharing, member photos cannot be altered from mobile devices.',
                 style: GoogleFonts.inter(
-                  fontSize: 13,
-                  height: 1.5,
+                  fontSize: 12.5,
+                  height: 1.45,
                   color: context.textMuted,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -812,7 +813,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Text(
                         'To update your facial ID photo, please speak with the front desk concierge during your next visit.',
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w500,
                           color: context.textPrimary,
                         ),
@@ -821,10 +822,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                height: 46,
+                height: 44,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(ctx),
                   style: ElevatedButton.styleFrom(
@@ -835,7 +836,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Text(
                     'Understood',
-                    style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w700),
+                    style: GoogleFonts.outfit(fontSize: 13.5, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
