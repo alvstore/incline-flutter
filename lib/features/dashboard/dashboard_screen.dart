@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/config/env_config.dart';
 import '../../core/models/models.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/error_mapper.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/bento_card.dart';
 import '../../core/widgets/dumbbell_loader.dart';
@@ -85,7 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Unable to refresh dashboard telemetry: $e';
+          _errorMessage = UserFriendlyErrorMapper.toGeneralErrorMessage(e, action: 'dashboard refresh');
           _isLoading = false;
         });
       }

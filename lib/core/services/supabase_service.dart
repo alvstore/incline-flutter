@@ -1035,7 +1035,7 @@ class SupabaseService {
       debugPrint('[INCLINE] verifyRazorpayPayment exception: $e');
       return PaymentVerificationResult(
         isVerified: false,
-        error: 'Network or verification service failure: $e',
+        error: 'Payment verification is temporarily unavailable. Please try again shortly.',
       );
     }
   }

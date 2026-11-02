@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/models.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 
 /// Dedicated Bottom Sheet for Members to Log Manual Body Measurements.
@@ -240,7 +241,7 @@ class _RecordMeasurementSheetState extends State<RecordMeasurementSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save measurements: $e'),
+            content: Text(UserFriendlyErrorMapper.toGeneralErrorMessage(e, action: 'measurement save')),
             backgroundColor: Colors.redAccent,
           ),
         );

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/watch_sync_service.dart';
+import '../../../core/services/native_health_bridge.dart';
+import '../../../core/utils/error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 
 /// Material 3 Health Goals & Sleep Customization Sheet
@@ -71,6 +73,50 @@ class _HealthGoalsSheetState extends State<HealthGoalsSheet> {
           backgroundColor: InclineColors.cardSurface,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
+  Future<void> _connectHealthData() async {
+    HapticFeedback.lightImpact();
+    try {
+      final provider = NativeHealthBridge.instance.activeProvider;
+      if (provider == null || !await provider.isAvailable()) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(WatchSyncService.instance.ecosystemSubtitle)),
+        );
+        return;
+      }
+      final permissionRequestHandled = await NativeHealthBridge.instance
+          .showPermissionsRationaleDialog(context);
+      if (!mounted) return;
+      if (!permissionRequestHandled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Health access was not connected. Check Health settings and try again.')),
+        );
+        return;
+      }
+      await WatchSyncService.instance.syncNow();
+      if (!mounted) return;
+      final hasSamples = WatchSyncService.instance.data.isConnected;
+      setState(() => _isWearableConnected = hasSamples);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(hasSamples
+              ? 'Health data connected. Latest samples are shown.'
+              : 'Access was requested, but no samples were returned. Check Health access and device sync.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(UserFriendlyErrorMapper.toGeneralErrorMessage(
+            error,
+            action: 'health data sync',
+          )),
         ),
       );
     }
@@ -439,8 +485,8 @@ class _HealthGoalsSheetState extends State<HealthGoalsSheet> {
                               const SizedBox(height: 4),
                               Text(
                                 _isWearableConnected
-                                    ? 'Connected to ${WatchSyncService.instance.watchBrand}'
-                                    : 'Connect to sync live heart rate & pedometer',
+                                    ? 'Recent samples from ${WatchSyncService.instance.watchBrand}'
+                                    : 'Connect to read health samples',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   color: colorScheme.onSurfaceVariant,
@@ -449,14 +495,17 @@ class _HealthGoalsSheetState extends State<HealthGoalsSheet> {
                             ],
                           ),
                         ),
-                        Switch(
-                          value: _isWearableConnected,
-                          activeColor: InclineColors.accentOrange,
-                          onChanged: (val) async {
-                            HapticFeedback.lightImpact();
-                            setState(() => _isWearableConnected = val);
-                            await WatchSyncService.instance.setWearableConnected(val);
-                          },
+                        OutlinedButton.icon(
+                          onPressed: _connectHealthData,
+                          icon: Icon(
+                            _isWearableConnected ? Icons.check_circle_outline_rounded : Icons.sync_rounded,
+                            size: 17,
+                          ),
+                          label: Text(_isWearableConnected ? 'Refresh' : 'Connect'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: InclineColors.accentOrange,
+                            side: BorderSide(color: InclineColors.accentOrange.withValues(alpha: 0.5)),
+                          ),
                         ),
                       ],
                     ),

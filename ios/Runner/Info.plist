@@ -52,9 +52,7 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Incline accesses your photo library to set your member avatar.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Incline reads your step count, active calories, resting heart rate, and workouts to personalize your training plan.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Incline writes completed club workout sessions to Apple Health.</string>
+	<string>Incline reads step count, active calories, heart rate, sleep, HRV, and exercise minutes from Apple Health to show your recorded health data.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Incline uses your location to verify club arrival for automated turnstile gate pass access and contrast suite proximity check-ins.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

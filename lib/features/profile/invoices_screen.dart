@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/models/models.dart';
 import '../../core/services/invoice_pdf_service.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/error_mapper.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/bento_card.dart';
 import '../../core/widgets/dumbbell_loader.dart';
@@ -430,7 +431,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           SnackBar(
             backgroundColor: AppTheme.rose,
             content: Text(
-              'PDF generation error: $e',
+              UserFriendlyErrorMapper.toGeneralErrorMessage(e, action: 'invoice PDF preparation'),
               style: GoogleFonts.outfit(color: Colors.white),
             ),
           ),

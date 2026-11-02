@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/models/models.dart';
 import '../../core/services/supabase_service.dart';
@@ -11,8 +14,7 @@ import '../home/components/health_goals_sheet.dart';
 import '../progress/components/body_assessment_3d_sheet.dart';
 
 /// 2026 World-Class Health Telemetry & Daily Activity Hub
-/// Hosts real-time biometric tracking, Galaxy Watch & Health Connect synchronization,
-/// Activity Bento Grid, and HOWBODY 3D body composition & posture diagnostics.
+/// Shows native health samples, an activity summary, and HOWBODY body diagnostics.
 class ActivityScreen extends StatefulWidget {
   final Member? member;
   final int initialSubTab; // 0: Wear Telemetry, 1: 3D Body Progress
@@ -40,6 +42,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
     _currentMember = widget.member ?? SupabaseService.instance.cachedMember;
     WatchSyncService.instance.addListener(_onWatchSyncUpdated);
     _applyWatchDataToMetrics();
+    unawaited(WatchSyncService.instance.syncNow());
     if (_currentMember == null) {
       _loadCurrentMember();
     }
@@ -85,24 +88,46 @@ class _ActivityScreenState extends State<ActivityScreen> {
         workoutMinutes: watch.workoutMinutes,
         targetMinutes: watch.goalWorkoutMinutes > 0 ? watch.goalWorkoutMinutes : 60,
         heartRateBpm: watch.heartRate,
-        heartRateZone: watch.heartRate > 0
-            ? (watch.heartRate > 140
-                ? 'Cardio Zone'
-                : (watch.heartRate > 100 ? 'Aerobic' : 'Resting Flow'))
-            : 'Sensor Disconnected',
+        heartRateZone: watch.heartRate > 0 ? 'Latest reading' : 'No recent reading',
         stepCount: watch.steps,
         targetSteps: watch.goalSteps > 0 ? watch.goalSteps : 10000,
         sleepHours: watch.sleepHours,
         targetSleepHours: watch.goalSleepHours > 0 ? watch.goalSleepHours : 8.0,
-        sleepScore: watch.sleepScore,
         hasSyncedToday: watch.hasSyncedToday,
         isConnected: watch.isConnected,
+        isManualSleep: watch.isManualSleep,
+        heartRateRecordedAt: watch.heartRateRecordedAt,
+        heartRateVariabilityMs: watch.heartRateVariabilityMs,
+        heartRateVariabilityRecordedAt: watch.heartRateVariabilityRecordedAt,
       );
     });
   }
 
   Future<void> _loadActivityData() async {
     _applyWatchDataToMetrics();
+  }
+
+  void _showMetricDetails(String key) {
+    final metric = switch (key) {
+      'heart_rate' => (
+          'Heart rate',
+          _metrics.heartRateBpm > 0
+              ? '${_metrics.heartRateBpm} BPM · ${_metrics.heartRateRecordedAt == null ? 'latest sample' : DateFormat('h:mm a').format(_metrics.heartRateRecordedAt!.toLocal())}'
+              : 'No recent heart-rate sample was found in ${WatchSyncService.instance.watchBrand}. Check that your device has synced its readings.',
+        ),
+      'calories' => ('Active calories', _metrics.activeCalories >= 0 ? '${_metrics.activeCalories} kcal recorded today' : 'No active-calorie sample was found today.'),
+      'steps' => ('Steps', _metrics.stepCount >= 0 ? '${NumberFormat('#,###').format(_metrics.stepCount)} steps recorded today' : 'No step sample was found today.'),
+      'time' => ('Workout time', _metrics.workoutMinutes >= 0 ? '${_metrics.workoutMinutes} minutes from recorded exercise time' : 'No exercise-time sample was found today.'),
+      _ => ('Sleep & recovery', _metrics.sleepHours > 0 ? '${_metrics.sleepHours.toStringAsFixed(1)} hours${_metrics.isManualSleep ? ' · manual entry' : ' · health data'}${_metrics.heartRateVariabilityMs > 0 ? '\nHRV ${WatchSyncService.instance.heartRateVariabilityMetricName} ${_metrics.heartRateVariabilityMs.toStringAsFixed(0)} ms · measured' : ''}' : 'No recent sleep sample was found in ${WatchSyncService.instance.watchBrand}.'),
+    };
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(metric.$1),
+        content: Text(metric.$2),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close'))],
+      ),
+    );
   }
 
   @override
@@ -133,7 +158,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             ),
             Text(
               _selectedSubTab == 0
-                  ? 'Real-Time Sensor Sync · Galaxy Watch & Health'
+                  ? WatchSyncService.instance.ecosystemSubtitle
                   : 'HOWBODY 360° Volumetric Telemetry & Clinical Scan',
               style: GoogleFonts.outfit(
                 fontSize: 11,
@@ -214,7 +239,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                             showSyncInHeader: false,
                             onMetricTap: (key) {
                               HapticFeedback.lightImpact();
-                              HealthGoalsSheet.show(context);
+                              _showMetricDetails(key);
                             },
                             onSetGoalsTap: () => HealthGoalsSheet.show(context),
                           ),
@@ -315,10 +340,13 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 HapticFeedback.lightImpact();
                 await watchService.syncNow();
                 if (context.mounted) {
+                  final hasSamples = watchService.data.hasSyncedToday;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Synchronized wearable telemetry via ${watchService.ecosystemSubtitle}',
+                        hasSamples
+                            ? '${watchService.watchBrand} samples updated.'
+                            : 'No recent samples found. Check ${watchService.watchBrand} access and device sync.',
                         style: GoogleFonts.inter(fontSize: 12.5),
                       ),
                       duration: const Duration(seconds: 2),
@@ -358,7 +386,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
               ),
             const SizedBox(width: 8),
             Text(
-              isSyncing ? 'Syncing Wearable Telemetry...' : 'Sync Wearable Telemetry',
+              isSyncing
+                  ? 'Reading ${watchService.watchBrand}...'
+                  : 'Refresh ${watchService.watchBrand} Samples',
               style: GoogleFonts.outfit(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,

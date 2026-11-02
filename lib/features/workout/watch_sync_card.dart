@@ -8,7 +8,7 @@ import '../../core/services/watch_sync_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/bento_card.dart';
 
-/// Riverpod & Flutter-Animate powered Bento Card for Smartwatch & Daily Telemetry
+/// Riverpod & Flutter-Animate powered Bento Card for native health samples and daily telemetry
 class WatchSyncCard extends ConsumerWidget {
   const WatchSyncCard({super.key});
 
@@ -50,7 +50,7 @@ class WatchSyncCard extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            watchData.isConnected ? watchService.watchBrand.toUpperCase() : 'NO WEARABLE PAIRED',
+                            watchData.isConnected ? watchService.watchBrand.toUpperCase() : 'NO HEALTH SAMPLES',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
@@ -61,7 +61,7 @@ class WatchSyncCard extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            watchData.isConnected ? watchService.ecosystemSubtitle : 'Phone Tracking • Sensor Disconnected',
+                            watchService.ecosystemSubtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
@@ -87,7 +87,7 @@ class WatchSyncCard extends ConsumerWidget {
                     : const Icon(Icons.sync_rounded, color: AppTheme.cyan, size: 22)
                         .animate(onPlay: (controller) => controller.repeat())
                         .rotate(duration: 4.seconds, curve: Curves.linear),
-                tooltip: 'Sync with watch now',
+                tooltip: 'Refresh health samples',
                 onPressed: isSyncing ? null : () => ref.read(watchSyncProvider.notifier).syncNow(),
               ),
             ],
@@ -130,7 +130,7 @@ class WatchSyncCard extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              NumberFormat('#,###').format(watchData.steps),
+                              watchData.steps >= 0 ? NumberFormat('#,###').format(watchData.steps) : '--',
                               style: GoogleFonts.outfit(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -185,7 +185,7 @@ class WatchSyncCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${watchData.activeCalories}',
+                        watchData.activeCalories >= 0 ? '${watchData.activeCalories}' : '--',
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -223,7 +223,7 @@ class WatchSyncCard extends ConsumerWidget {
                       Row(
                         children: [
                           const Icon(Icons.favorite_rounded, size: 16, color: InclineColors.thermalRed)
-                              .animate(target: (watchData.isConnected && watchData.heartRate > 0) ? 1 : 0)
+                              .animate(target: (watchData.heartRate > 0) ? 1 : 0)
                               .scale(
                                 begin: const Offset(1, 1),
                                 end: const Offset(1.2, 1.2),
@@ -244,21 +244,23 @@ class WatchSyncCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        (watchData.isConnected && watchData.heartRate > 0)
+                        (watchData.heartRate > 0)
                             ? '${watchData.heartRate}'
                             : '--',
                         style: GoogleFonts.outfit(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: (watchData.isConnected && watchData.heartRate > 0)
+                          color: (watchData.heartRate > 0)
                               ? InclineColors.thermalRed
                               : context.textPrimary,
                         ),
                       ),
                       Text(
-                        (watchData.isConnected && watchData.heartRate > 0)
-                            ? 'BPM Live'
-                            : 'Sensor Idle',
+                        (watchData.heartRate > 0)
+                            ? watchData.heartRateRecordedAt == null
+                                ? 'Latest sample'
+                                : 'Read ${DateFormat('h:mm a').format(watchData.heartRateRecordedAt!.toLocal())}'
+                            : 'No recent sample',
                         style: GoogleFonts.outfit(
                           fontSize: 11,
                           color: context.textMuted,
@@ -280,9 +282,9 @@ class WatchSyncCard extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                watchData.hasSyncedToday
-                    ? 'Synced ${DateFormat('hh:mm a').format(watchData.lastSyncTime)}'
-                    : 'Auto-sync active with fitness tracker',
+                watchData.lastSyncTime != null
+                    ? 'Checked ${DateFormat('h:mm a').format(watchData.lastSyncTime!.toLocal())}'
+                    : 'No health sync recorded yet',
                 style: GoogleFonts.outfit(
                   fontSize: 11,
                   color: context.textMuted,

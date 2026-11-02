@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:ui' show PlatformDispatcher;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +13,7 @@ import 'core/models/models.dart';
 import 'core/providers/app_providers.dart';
 import 'core/routing/app_router.dart';
 import 'core/services/session_manager.dart';
+import 'core/services/app_error_reporting_service.dart';
 import 'core/services/supabase_service.dart';
 import 'core/services/biometric_auth_service.dart';
 import 'core/services/deep_link_service.dart';
@@ -19,6 +24,7 @@ import 'features/onboarding/incline_welcome_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _installErrorHandling();
 
   // Initialize ThemeController
   await ThemeController.instance.init();
@@ -38,6 +44,7 @@ void main() async {
   // Initialize Supabase & Session Manager
   try {
     await SupabaseService.instance.init();
+    await AppErrorReportingService.instance.initialize();
   } catch (e) {
     debugPrint('[INCLINE] Supabase initialization notice: $e');
   }
@@ -54,7 +61,7 @@ void main() async {
     debugPrint('[INCLINE] Font preload notice: $e');
   }
 
-  SessionManager.instance.init();
+  await SessionManager.instance.init();
 
   runApp(const InclineApp());
 }
@@ -85,6 +92,14 @@ class _InclineAppRootState extends ConsumerState<_InclineAppRoot> {
   @override
   void initState() {
     super.initState();
+    AppErrorReportingService.instance.setCurrentScreenProvider(() {
+      try {
+        return _router?.routerDelegate.currentConfiguration.uri.path ??
+            '/startup';
+      } catch (_) {
+        return '/startup';
+      }
+    });
     _checkInitialState();
     SessionManager.instance.addListener(_onSessionStateChange);
   }
@@ -92,6 +107,7 @@ class _InclineAppRootState extends ConsumerState<_InclineAppRoot> {
   @override
   void dispose() {
     SessionManager.instance.removeListener(_onSessionStateChange);
+    AppErrorReportingService.instance.setCurrentScreenProvider(null);
     DeepLinkService.instance.dispose();
     super.dispose();
   }
@@ -198,6 +214,65 @@ class _InclineAppRootState extends ConsumerState<_InclineAppRoot> {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       routerConfig: _router!,
+    );
+  }
+}
+
+
+void _installErrorHandling() {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    unawaited(AppErrorReportingService.instance.record(
+      details.exception,
+      stackTrace: details.stack,
+    ));
+  };
+
+  PlatformDispatcher.instance.onError = (error, stackTrace) {
+    unawaited(AppErrorReportingService.instance.record(
+      error,
+      stackTrace: stackTrace,
+      severity: 'critical',
+    ));
+    return true;
+  };
+
+  ErrorWidget.builder = (details) => kDebugMode
+      ? ErrorWidget(details.exception)
+      : const _SoftErrorFallback();
+}
+
+class _SoftErrorFallback extends StatelessWidget {
+  const _SoftErrorFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.surface,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline_rounded, color: colors.error, size: 32),
+              const SizedBox(height: 12),
+              Text(
+                'This screen could not load',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: colors.onSurface),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Please try again. If this keeps happening, contact the Incline team.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colors.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

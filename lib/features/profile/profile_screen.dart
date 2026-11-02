@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/models/models.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/services/media_picker_service.dart';
+import '../../core/services/native_health_bridge.dart';
+import '../../core/services/watch_sync_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/theme_controller.dart';
 import 'attendance_logs_screen.dart';
@@ -20,8 +23,7 @@ import 'widgets/profile_registration_details_card.dart';
 import 'widgets/profile_security_card.dart';
 import 'widgets/profile_services_bento_grid.dart';
 
-/// 2026 World-Class Luxury Executive Profile & Account Screen for Incline Members
-/// Engineered with clean Obsidian Noir aesthetics, animated plan telemetry, and pure Supabase sync.
+/// Member account screen with theme-aware profile, membership, and account sections.
 class ProfileScreen extends StatefulWidget {
   final Member? member;
   final VoidCallback onSignOut;
@@ -43,9 +45,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Membership? _membership;
   Branch? _branch;
   ReferralSettings? _referralSettings;
-  bool _heartRateSyncEnabled = true;
-  bool _calorieSyncEnabled = true;
-  bool _turnstileGateEnabled = true;
   int _selectedTabIndex = 0;
 
   @override
@@ -134,126 +133,130 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showHealthPermissionsSheet() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: context.cardElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: context.borderCol,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: context.borderCol,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.emerald.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.watch_rounded, color: AppTheme.emerald, size: 22),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: context.brandAccent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Wearable & Health Permissions',
-                            style: GoogleFonts.outfit(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: context.textPrimary,
-                            ),
-                          ),
-                          Text(
-                            'Apple Health & Google Health Connect Live Sync',
-                            style: GoogleFonts.outfit(fontSize: 12, color: context.textSecondary),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _buildPermissionSwitchRow(
-                  icon: Icons.favorite_rounded,
-                  iconColor: AppTheme.rose,
-                  title: 'Real-time Heart Rate (BPM)',
-                  description: 'Live telemetry synced during active workout sessions for cardiovascular tracking.',
-                  value: _heartRateSyncEnabled,
-                  onChanged: (val) {
-                    setState(() => _heartRateSyncEnabled = val);
-                    setSheetState(() {});
-                  },
-                ),
-                Divider(color: context.borderCol, height: 24),
-                _buildPermissionSwitchRow(
-                  icon: Icons.local_fire_department_rounded,
-                  iconColor: AppTheme.amber,
-                  title: 'Calorie Burn & Daily Steps',
-                  description: 'Aggregates active metabolic burn with nutrition targets.',
-                  value: _calorieSyncEnabled,
-                  onChanged: (val) {
-                    setState(() => _calorieSyncEnabled = val);
-                    setSheetState(() {});
-                  },
-                ),
-                Divider(color: context.borderCol, height: 24),
-                _buildPermissionSwitchRow(
-                  icon: Icons.near_me_rounded,
-                  iconColor: AppTheme.emerald,
-                  title: 'Club Beacon & Gate Proximity',
-                  description: 'Location and Bluetooth signals for seamless check-in upon arrival.',
-                  value: _turnstileGateEnabled,
-                  onChanged: (val) {
-                    setState(() => _turnstileGateEnabled = val);
-                    setSheetState(() {});
-                  },
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: context.cardElevated,
-                          content: Text(
-                            'Health telemetry sync preferences updated.',
-                            style: GoogleFonts.outfit(color: AppTheme.emerald, fontWeight: FontWeight.w700),
+                    child: Icon(Icons.watch_rounded, color: context.brandAccent, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Connect health data',
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: context.textPrimary,
                           ),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: context.brandAccent,
-                      foregroundColor: context.onBrandAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        Text(
+                          NativeHealthBridge.instance.activeProvider?.name ?? 'Health provider',
+                          style: GoogleFonts.outfit(fontSize: 13, color: context.textSecondary),
+                        ),
+                      ],
                     ),
-                    child: Text('Save Preferences', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
                   ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Incline reads only the categories you approve: steps, active calories, workouts, heart rate, sleep, and HRV. New records appear when your wearable or health app writes them. Incline refreshes while the app is open.',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: context.textSecondary,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    await _connectHealthProvider();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: context.brandAccent,
+                    foregroundColor: context.onBrandAccent,
+                    minimumSize: const Size.fromHeight(50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text('Choose health access', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _connectHealthProvider() async {
+    final provider = NativeHealthBridge.instance.activeProvider;
+    if (provider == null || !await provider.isAvailable()) {
+      if (!mounted) return;
+      final message = provider is AndroidHealthConnectProvider
+          ? 'Health Connect is unavailable. Install or update it, then try again.'
+          : 'Apple Health is not available on this device.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
+    final granted = await NativeHealthBridge.instance
+        .showPermissionsRationaleDialog(context);
+    if (!mounted) return;
+    if (!granted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Health access was not enabled. You can try again in device health settings.')),
+      );
+      return;
+    }
+    await WatchSyncService.instance.syncNow();
+    if (!mounted) return;
+    final data = WatchSyncService.instance.data;
+    final hasSamples = data.isConnected && (data.steps >= 0 ||
+        data.activeCalories >= 0 ||
+        data.workoutMinutes >= 0 ||
+        data.heartRate > 0 ||
+        data.heartRateVariabilityMs > 0 ||
+        (data.sleepHours > 0 && !data.isManualSleep));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          hasSamples
+              ? 'Health access connected. Latest saved records are loaded.'
+              : data.isConnected
+                  ? 'Health access is available. New records appear when your provider saves them.'
+                  : 'Connection request completed. Check device health settings if no records appear.',
         ),
       ),
     );
@@ -338,9 +341,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 12),
               _buildTermsSection(
                 context: context,
-                title: '3. Health Telemetry & GDPR Privacy',
+                title: '3. Health data & privacy',
                 body:
-                    'Telemetry (heart rate, calories burned, training attendance) is stored using AES-256 encryption compliant with HIPAA and GDPR guidelines. Member data is confidential and is never sold or shared with third-party advertisers.',
+                    'The member app reads health records only for the categories you approve in Apple Health or Health Connect. You can review or revoke that access in your device health settings. Incline reads saved records and does not create health samples.',
               ),
               const SizedBox(height: 12),
               _buildTermsSection(
@@ -360,7 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Text('Close & Acknowledge', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
+                  child: Text('Close', style: GoogleFonts.outfit(fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -399,56 +402,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPermissionSwitchRow({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String description,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: iconColor, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w700, color: context.textPrimary),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: GoogleFonts.outfit(fontSize: 11, color: context.textSecondary, height: 1.4),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: AppTheme.emerald,
-          activeTrackColor: AppTheme.emerald.withValues(alpha: 0.25),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final member = _resolvedMember ?? widget.member;
+    final tabContent = _buildActiveTabContent(member);
+    final disableAnimations = MediaQuery.of(context).disableAnimations;
 
     return Scaffold(
       backgroundColor: context.scaffoldBg,
@@ -467,7 +425,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           tooltip: 'Back to Home',
         ),
         title: Text(
-          'Member Profile & Account',
+          'Profile',
           style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w800, color: context.textPrimary),
         ),
         actions: [
@@ -483,11 +441,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ThemeController.instance.toggleTheme();
             },
           ),
-          IconButton(
-            icon: Icon(Icons.logout_rounded, color: context.textMuted, size: 20),
-            tooltip: 'Sign Out',
-            onPressed: _confirmSignOut,
-          ),
         ],
       ),
       body: SafeArea(
@@ -497,7 +450,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           backgroundColor: context.cardElevated,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 110),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -527,28 +480,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildSegmentedTabBar(),
                 const SizedBox(height: 16),
 
-                // 3. Tab Specific Content View with Smooth Cross-fade
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 240),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.02),
-                          end: Offset.zero,
-                        ).animate(animation),
-                        child: child,
-                      ),
-                    );
-                  },
-                  child: KeyedSubtree(
+                // Tab transitions stay subtle and respect the system's reduced-motion setting.
+                if (disableAnimations)
+                  KeyedSubtree(
                     key: ValueKey<int>(_selectedTabIndex),
-                    child: _buildActiveTabContent(member),
-                  ),
-                ),
+                    child: tabContent,
+                  )
+                else
+                  tabContent
+                      .animate(key: ValueKey<int>(_selectedTabIndex))
+                      .fadeIn(duration: 220.ms, curve: Curves.easeOutCubic)
+                      .slideY(
+                        begin: 0.02,
+                        end: 0,
+                        duration: 220.ms,
+                        curve: Curves.easeOutCubic,
+                      ),
               ],
             ),
           ),
@@ -557,12 +504,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Clean Segmented Pill Navigation: [Membership] | [KYC Dossier] | [Security & Club]
+  /// Compact, clearly labeled navigation for profile sections.
   Widget _buildSegmentedTabBar() {
     final tabs = [
-      (index: 0, label: 'Membership', icon: Icons.card_membership_rounded),
-      (index: 1, label: 'KYC Dossier', icon: Icons.badge_outlined),
-      (index: 2, label: 'Security & Club', icon: Icons.shield_outlined),
+      (index: 0, label: 'Membership'),
+      (index: 1, label: 'Personal'),
+      (index: 2, label: 'Account'),
     ];
 
     return Container(
@@ -579,62 +526,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: tabs.map((t) {
           final isSelected = _selectedTabIndex == t.index;
           return Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                if (_selectedTabIndex != t.index) {
-                  HapticFeedback.selectionClick();
-                  setState(() => _selectedTabIndex = t.index);
-                }
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(vertical: 9.5),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? (context.isDark ? context.cardElevated : context.scaffoldBg)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: isSelected
-                      ? Border.all(
-                          color: context.brandAccent.withValues(alpha: 0.35),
-                          width: 1.0,
-                        )
-                      : Border.all(color: Colors.transparent, width: 1.0),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: context.isDark ? 0.35 : 0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          t.icon,
-                          size: 13,
-                          color: isSelected ? context.brandAccent : context.textMuted,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          t.label,
-                          style: GoogleFonts.outfit(
-                            fontSize: 11.5,
-                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                            color: isSelected ? context.textPrimary : context.textSecondary,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                      ],
+            child: Semantics(
+              button: true,
+              selected: isSelected,
+              label: t.label,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  if (_selectedTabIndex != t.index) {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedTabIndex = t.index);
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: MediaQuery.of(context).disableAnimations
+                      ? Duration.zero
+                      : 200.ms,
+                  curve: Curves.easeOutCubic,
+                  constraints: const BoxConstraints(minHeight: 48),
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? (context.isDark ? context.cardElevated : context.scaffoldBg)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: isSelected
+                        ? Border.all(
+                            color: context.brandAccent.withValues(alpha: 0.35),
+                            width: 1.0,
+                          )
+                        : Border.all(color: Colors.transparent, width: 1.0),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: context.isDark ? 0.35 : 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      t.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? context.textPrimary : context.textSecondary,
+                      ),
                     ),
                   ),
                 ),
@@ -752,45 +693,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ProfileContactBar(branch: _branch),
             const SizedBox(height: 16),
 
-            // 3. Refined Luxury Sign Out CTA
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppTheme.rose.withValues(alpha: 0.35),
-                  width: 1.0,
-                ),
-                color: AppTheme.rose.withValues(alpha: 0.06),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _confirmSignOut,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.logout_rounded, size: 16, color: AppTheme.rose),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Sign Out Active Session',
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.rose,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 12),
 
             // Trademark Registered Brand Footer
             _buildBrandFooter(context),
@@ -858,7 +761,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 3),
             Text(
-              'UDAIPUR FLAGSHIP • TRADE MARK REGISTERED',
+              'UDAIPUR FLAGSHIP • MEMBER ACCOUNT',
               style: GoogleFonts.outfit(
                 fontSize: 8.5,
                 fontWeight: FontWeight.w600,

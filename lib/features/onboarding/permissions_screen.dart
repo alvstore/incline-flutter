@@ -12,11 +12,9 @@ import '../../core/services/push_notification_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/theme/app_theme.dart';
 
-/// 2026 Compliant Luxury Permissions & Telemetry Screen for Incline App Launch
-/// Conforms to 2026 Google Play Store & Apple App Store developer norms:
+/// Permissions and telemetry choices for Incline app launch.
 /// - Explicit user opt-in before requesting system-level permissions
 /// - Granular controls for Location, Health, Notifications, and Camera
-/// - AES-256 on-device privacy guarantee with zero third-party broker sharing
 /// - Graceful fallback to App Settings if permissions were previously denied
 class AppPermissionsScreen extends StatefulWidget {
   const AppPermissionsScreen({super.key});
@@ -432,7 +430,7 @@ class _AppPermissionsScreenState extends State<AppPermissionsScreen> {
                       const Icon(Icons.lock_outline_rounded, size: 13, color: InclineColors.textMuted),
                       const SizedBox(width: 6),
                       Text(
-                        'AES-256 on-device encrypted. 2026 Play Store & App Store compliant.',
+                        'You can review or change these permissions in device settings.',
                         style: GoogleFonts.outfit(
                           fontSize: 11,
                           color: InclineColors.textMuted,

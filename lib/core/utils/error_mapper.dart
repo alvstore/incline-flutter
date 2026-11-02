@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../services/app_error_reporting_service.dart';
 
 /// Clean, production-grade error mapper that sanitizes backend exceptions
 /// into dignified, member-friendly messages without leaking infrastructure URLs or technical stack traces.
@@ -11,7 +14,7 @@ class UserFriendlyErrorMapper {
   static String toAuthErrorMessage(dynamic error) {
     if (error == null) return 'An unexpected error occurred. Please try again.';
 
-    debugPrint('[Incline Security Shield] Raw auth exception sanitized: $error');
+    unawaited(AppErrorReportingService.instance.record(error));
 
     // 1. Network / Connectivity / DNS / Host lookup failures
     if (error is SocketException ||
@@ -87,7 +90,7 @@ class UserFriendlyErrorMapper {
   static String toGeneralErrorMessage(dynamic error, {String action = 'operation'}) {
     if (error == null) return 'Unable to complete $action. Please try again.';
 
-    debugPrint('[Incline Security Shield] Raw operation exception sanitized: $error');
+    unawaited(AppErrorReportingService.instance.record(error));
 
     final errStr = error.toString().toLowerCase();
     if (errStr.contains('failed host lookup') ||

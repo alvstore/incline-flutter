@@ -70,18 +70,17 @@ class _HomeScreenState extends State<HomeScreen>
       workoutMinutes: wData.workoutMinutes,
       targetMinutes: wData.goalWorkoutMinutes,
       heartRateBpm: wData.heartRate,
-      heartRateZone: (wData.isConnected && wData.heartRate > 0)
-          ? (wData.heartRate > 120
-              ? 'Peak Zone'
-              : (wData.heartRate > 90 ? 'Cardio Focus' : 'Resting Pace'))
-          : 'Sensor Off',
+      heartRateRecordedAt: wData.heartRateRecordedAt,
+      heartRateVariabilityMs: wData.heartRateVariabilityMs,
+      heartRateVariabilityRecordedAt: wData.heartRateVariabilityRecordedAt,
+      heartRateZone: wData.heartRate > 0 ? 'Latest reading' : 'No recent reading',
       stepCount: wData.steps,
       targetSteps: wData.goalSteps,
       sleepHours: wData.sleepHours,
       targetSleepHours: wData.goalSleepHours,
-      sleepScore: wData.sleepScore,
       hasSyncedToday: wData.hasSyncedToday,
       isConnected: wData.isConnected,
+      isManualSleep: wData.isManualSleep,
     );
 
     WatchSyncService.instance.addListener(_onWatchSyncUpdated);
@@ -171,15 +170,14 @@ class _HomeScreenState extends State<HomeScreen>
         targetMinutes: wData.goalWorkoutMinutes,
         sleepHours: wData.sleepHours,
         targetSleepHours: wData.goalSleepHours,
-        sleepScore: wData.sleepScore,
-        heartRateBpm: wData.heartRate,
-        heartRateZone: (wData.isConnected && wData.heartRate > 0)
-            ? (wData.heartRate > 120
-                ? 'Peak Zone'
-                : (wData.heartRate > 90 ? 'Cardio Focus' : 'Resting Pace'))
-            : 'Sensor Off',
+          heartRateBpm: wData.heartRate,
+        heartRateRecordedAt: wData.heartRateRecordedAt,
+        heartRateVariabilityMs: wData.heartRateVariabilityMs,
+        heartRateVariabilityRecordedAt: wData.heartRateVariabilityRecordedAt,
+        heartRateZone: wData.heartRate > 0 ? 'Latest reading' : 'No recent reading',
         hasSyncedToday: wData.hasSyncedToday,
         isConnected: wData.isConnected,
+        isManualSleep: wData.isManualSleep,
       );
     });
   }
@@ -263,17 +261,16 @@ class _HomeScreenState extends State<HomeScreen>
             targetSteps: wData.goalSteps,
             sleepHours: wData.sleepHours,
             targetSleepHours: wData.goalSleepHours,
-            sleepScore: wData.sleepScore,
-            workoutMinutes: wData.workoutMinutes,
+                  workoutMinutes: wData.workoutMinutes,
             targetMinutes: wData.goalWorkoutMinutes,
             hasSyncedToday: wData.hasSyncedToday,
             isConnected: wData.isConnected,
+            isManualSleep: wData.isManualSleep,
             heartRateBpm: wData.heartRate,
-            heartRateZone: (wData.isConnected && wData.heartRate > 0)
-                ? (wData.heartRate > 120
-                    ? 'Peak Zone'
-                    : (wData.heartRate > 90 ? 'Cardio Focus' : 'Resting Pace'))
-                : 'Sensor Off',
+            heartRateRecordedAt: wData.heartRateRecordedAt,
+            heartRateVariabilityMs: wData.heartRateVariabilityMs,
+            heartRateVariabilityRecordedAt: wData.heartRateVariabilityRecordedAt,
+            heartRateZone: wData.heartRate > 0 ? 'Latest reading' : 'No recent reading',
           );
         });
       }

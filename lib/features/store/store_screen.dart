@@ -6,6 +6,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../core/config/env_config.dart';
 import '../../core/models/models.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/error_mapper.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/bento_card.dart';
 import '../../core/widgets/dumbbell_loader.dart';
@@ -215,7 +216,7 @@ class _StoreScreenState extends State<StoreScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Status: $errorReason',
+                          'Status: ${UserFriendlyErrorMapper.toGeneralErrorMessage(errorReason, action: 'payment verification')}',
                           style: GoogleFonts.outfit(fontSize: 11, fontWeight: FontWeight.w600, color: InclineColors.thermalAmber),
                         ),
                       ),
@@ -830,7 +831,7 @@ class _StoreScreenState extends State<StoreScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment order initialization failed: $errorMsg. Try charging to Member Folio.'),
+            content: const Text('Could not start this payment. Please try again or use Member Folio.'),
             backgroundColor: InclineColors.thermalRed,
           ),
         );

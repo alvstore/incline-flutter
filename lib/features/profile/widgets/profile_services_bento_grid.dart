@@ -3,8 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// 2026 World-Class 2x2 Member Services & Financials Bento Grid
-/// Theme-adaptive with Incline tokens (light & dark).
+/// Member service shortcuts in a compact, theme-aware grid.
 class ProfileServicesBentoGrid extends StatelessWidget {
   final VoidCallback onOpenInvoices;
   final VoidCallback onOpenAttendance;
@@ -29,24 +28,23 @@ class ProfileServicesBentoGrid extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppTheme.emerald.withValues(alpha: 0.12),
+                color: context.brandAccent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.dashboard_customize_rounded,
-                color: AppTheme.emerald,
+                color: context.brandAccent,
                 size: 16,
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'MEMBER SERVICES & ACCOUNT',
+                'Your club services',
                 style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2.0,
-                  color: context.textMuted,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -63,8 +61,6 @@ class ProfileServicesBentoGrid extends StatelessWidget {
                 context: context,
                 title: 'Invoices & Receipts',
                 subtitle: 'Past invoices & receipts',
-                badge: 'VERIFIED',
-                badgeColor: AppTheme.emerald,
                 icon: Icons.receipt_long_rounded,
                 iconColor: AppTheme.emerald,
                 onTap: onOpenInvoices,
@@ -76,8 +72,6 @@ class ProfileServicesBentoGrid extends StatelessWidget {
                 context: context,
                 title: 'Turnstile Logs',
                 subtitle: 'Optical check-ins & streak',
-                badge: 'ENROLLED',
-                badgeColor: InclineColors.accentOrange,
                 icon: Icons.history_rounded,
                 iconColor: InclineColors.accentOrange,
                 onTap: onOpenAttendance,
@@ -95,8 +89,6 @@ class ProfileServicesBentoGrid extends StatelessWidget {
                 context: context,
                 title: 'Desk Requests',
                 subtitle: 'Inquiries, freeze, lockers',
-                badge: 'PRIORITY',
-                badgeColor: InclineColors.thermalAmber,
                 icon: Icons.assignment_outlined,
                 iconColor: InclineColors.thermalAmber,
                 onTap: onOpenRequests,
@@ -108,8 +100,6 @@ class ProfileServicesBentoGrid extends StatelessWidget {
                 context: context,
                 title: 'Club Feedback',
                 subtitle: 'Rate amenities & coaches',
-                badge: '5★ RATED',
-                badgeColor: InclineColors.accentOrange,
                 icon: Icons.star_outline_rounded,
                 iconColor: InclineColors.accentOrange,
                 onTap: onOpenFeedback,
@@ -125,92 +115,84 @@ class ProfileServicesBentoGrid extends StatelessWidget {
     required BuildContext context,
     required String title,
     required String subtitle,
-    required String badge,
-    required Color badgeColor,
     required IconData icon,
     required Color iconColor,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        height: 140,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: context.cardBg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: context.borderCol, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+    return Semantics(
+      button: true,
+      label: '$title. $subtitle',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(18),
+          child: Ink(
+            height: 132,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: context.borderCol, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: context.isDark ? 0.14 : 0.04),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 18),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: badgeColor.withValues(alpha: 0.3), width: 0.8),
-                  ),
-                  child: Text(
-                    badge,
-                    style: GoogleFonts.outfit(
-                      fontSize: 8.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6,
-                      color: badgeColor,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.13),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, color: iconColor, size: 18),
                     ),
-                  ),
+                    Icon(Icons.arrow_forward_rounded, color: context.textMuted, size: 18),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w400,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: context.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );

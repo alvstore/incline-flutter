@@ -4,9 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// 2026 World-Class Member Dossier Hero
-/// Displays executive profile photo, tracked name, active status, and copyable member passcode.
-/// (Touchless gate pass removed per user request)
+/// Member photo, account status, and copyable member code.
 class ProfileDossierHero extends StatelessWidget {
   final Member? member;
   final VoidCallback? onAvatarTap;
@@ -29,6 +27,10 @@ class ProfileDossierHero extends StatelessWidget {
     final fullName = member?.profile?.fullName ?? member?.fullName ?? 'Incline Member';
     final memberCode = member?.memberCode ?? 'INC-MEMBER';
     final avatarUrl = member?.avatarUrl;
+    final status = member?.status.trim().isNotEmpty == true
+        ? member!.status.trim().replaceAll('_', ' ').toUpperCase()
+        : 'ACTIVE';
+    final isActive = status == 'ACTIVE';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -46,54 +48,59 @@ class ProfileDossierHero extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // 1. Executive Avatar with Jewel Accent & Tap-to-Change
-          GestureDetector(
-            onTap: onAvatarTap,
-            child: Stack(
-              children: [
-                Container(
-                  width: 66,
-                  height: 66,
-                  padding: const EdgeInsets.all(2.5),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [InclineColors.accentOrange, InclineColors.cardSurface],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.emerald.withValues(alpha: 0.25),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: avatarUrl != null && avatarUrl.startsWith('http')
-                        ? Image.network(
-                            avatarUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildMonogram(fullName, context),
-                          )
-                        : _buildMonogram(fullName, context),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
+          // Member photo with a clear, branded change affordance.
+          Semantics(
+            button: onAvatarTap != null,
+            label: 'Change profile photo',
+            child: InkWell(
+              onTap: onAvatarTap,
+              customBorder: const CircleBorder(),
+              child: Stack(
+                children: [
+                  Container(
+                    width: 66,
+                    height: 66,
+                    padding: const EdgeInsets.all(2.5),
                     decoration: BoxDecoration(
-                      color: AppTheme.emerald,
                       shape: BoxShape.circle,
-                      border: Border.all(color: context.cardBg, width: 2),
+                      gradient: LinearGradient(
+                        colors: [context.brandAccent, context.cardElevated],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: context.brandAccent.withValues(alpha: 0.22),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.camera_alt_rounded, size: 11, color: Colors.white),
+                    child: ClipOval(
+                      child: avatarUrl != null && avatarUrl.startsWith('http')
+                          ? Image.network(
+                              avatarUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _buildMonogram(fullName, context),
+                            )
+                          : _buildMonogram(fullName, context),
+                    ),
                   ),
-                ),
-              ],
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: context.brandAccent,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: context.cardBg, width: 2),
+                      ),
+                      child: const Icon(Icons.camera_alt_rounded, size: 11, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -122,9 +129,14 @@ class ProfileDossierHero extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppTheme.emerald.withValues(alpha: 0.12),
+                        color: (isActive ? AppTheme.emerald : context.textMuted)
+                            .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.35), width: 1),
+                        border: Border.all(
+                          color: (isActive ? AppTheme.emerald : context.textMuted)
+                              .withValues(alpha: 0.35),
+                          width: 1,
+                        ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -132,19 +144,19 @@ class ProfileDossierHero extends StatelessWidget {
                           Container(
                             width: 6,
                             height: 6,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.emerald,
+                            decoration: BoxDecoration(
+                              color: isActive ? AppTheme.emerald : context.textMuted,
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            'ACTIVE',
+                            status,
                             style: GoogleFonts.outfit(
                               fontSize: 9,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1.0,
-                              color: AppTheme.emerald,
+                              color: isActive ? AppTheme.emerald : context.textMuted,
                             ),
                           ),
                         ],

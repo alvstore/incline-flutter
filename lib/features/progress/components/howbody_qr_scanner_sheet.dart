@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import '../../../../core/models/models.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../core/models/models.dart';
+import '../../../core/theme/app_theme.dart';
 import 'howbody_link_sheet.dart';
 
 /// Official HOWBODY QR Code Payload Contract (PROJECT.md § Interface Contracts)

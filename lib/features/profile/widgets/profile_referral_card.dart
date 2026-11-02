@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/models.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_mapper.dart';
 import '../../../core/widgets/dumbbell_loader.dart';
 
 /// 2026 World-Class Member Referral & Tracking Card
@@ -267,7 +268,7 @@ class _ReferralSheetContentState extends State<_ReferralSheetContent> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(res['error']?.toString() ?? 'Unable to process claim request.'),
+            content: Text(UserFriendlyErrorMapper.toGeneralErrorMessage(res['error'], action: 'reward claim')),
             backgroundColor: Colors.redAccent,
           ),
         );

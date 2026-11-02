@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/models.dart';
-import '../../core/services/watch_sync_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'animated_exercise_visualizer.dart';
 import 'detailed_exercise_sheet.dart';
@@ -116,12 +115,6 @@ class _WorkoutExecutionSheetState extends State<WorkoutExecutionSheet> {
     });
 
     final currentEx = widget.day.exercises[_currentExerciseIndex];
-
-    // Sync live set completion with Smartwatch
-    WatchSyncService.instance.recordExerciseCompleted(
-      exerciseName: currentEx.name,
-      sets: 1,
-    );
 
     // If all sets are now completed, mark the exercise as finished
     if (_completedSets.every((s) => s)) {
@@ -240,7 +233,7 @@ class _WorkoutExecutionSheetState extends State<WorkoutExecutionSheet> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Saved to local session history & synced with ${WatchSyncService.instance.watchBrand} (${WatchSyncService.instance.ecosystemSubtitle}).',
+                        'Saved to local session history. Completed sets do not create wearable health samples.',
                         style: GoogleFonts.outfit(fontSize: 12, color: AppTheme.cyan, height: 1.3),
                       ),
                     ),

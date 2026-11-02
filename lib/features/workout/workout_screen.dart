@@ -436,9 +436,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                     ),
                                     const SizedBox(width: 5),
                                     Text(
-                                      (WatchSyncService.instance.data.isConnected &&
-                                              WatchSyncService.instance.data.sleepScore > 0)
-                                          ? 'READINESS ${WatchSyncService.instance.data.sleepScore}%'
+                                      (WatchSyncService.instance.data.heartRateVariabilityMs > 0)
+                                          ? 'HRV ${WatchSyncService.instance.heartRateVariabilityMetricName} ${WatchSyncService.instance.data.heartRateVariabilityMs.toStringAsFixed(0)} ms'
                                           : 'SCHEDULE ACTIVE',
                                       style: GoogleFonts.outfit(
                                         fontSize: 9.5,

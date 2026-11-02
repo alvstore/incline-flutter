@@ -1,104 +1,101 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
-import 'watch_sync_service.dart';
 
-/// Abstract Extension Point for OS Health Platforms
+/// Platform health data access. The app reads existing samples only.
 abstract class NativeHealthProvider {
   String get name;
   Future<bool> isAvailable();
   Future<bool> requestPermissions();
   Future<Map<String, dynamic>> readDailyMetrics();
-  Future<bool> writeCompletedWorkout({
-    required String title,
-    required DateTime startTime,
-    required DateTime endTime,
-    required int caloriesBurned,
-  });
 }
 
-/// iOS Apple HealthKit Provider Implementation
+/// Read-only Apple HealthKit provider.
 class AppleHealthKitProvider implements NativeHealthProvider {
+  static const MethodChannel _channel =
+      MethodChannel('com.incline/native_health');
+
   @override
-  String get name => 'Apple HealthKit';
+  String get name => 'Apple Health';
 
   @override
   Future<bool> isAvailable() async {
-    return !kIsWeb && Platform.isIOS;
+    if (kIsWeb || !Platform.isIOS) return false;
+    try {
+      return await _channel.invokeMethod<bool>('isHealthDataAvailable') ?? false;
+    } catch (error) {
+      debugPrint('[NativeHealthBridge] Apple Health availability error: $error');
+      return false;
+    }
   }
 
   @override
   Future<bool> requestPermissions() async {
-    // In production, invokes HealthKit native authorization for HKQuantityTypeIdentifierStepCount,
-    // ActiveEnergyBurned, HeartRate, and WorkoutType.
-    debugPrint('[INCLINE] AppleHealthKitProvider: Requesting HKAuthorizationStatus');
-    return true;
+    if (!await isAvailable()) return false;
+    try {
+      return await _channel.invokeMethod<bool>('requestPermissions') ?? false;
+    } catch (error) {
+      debugPrint('[NativeHealthBridge] Apple Health permission error: $error');
+      return false;
+    }
   }
 
   @override
   Future<Map<String, dynamic>> readDailyMetrics() async {
-    final telemetry = WatchSyncService.instance.data;
-    return {
-      'steps': telemetry.steps,
-      'activeCalories': telemetry.activeCalories,
-      'heartRate': telemetry.heartRate,
-      'sleepHours': telemetry.sleepHours,
-      'workoutMinutes': telemetry.workoutMinutes,
-    };
-  }
-
-  @override
-  Future<bool> writeCompletedWorkout({
-    required String title,
-    required DateTime startTime,
-    required DateTime endTime,
-    required int caloriesBurned,
-  }) async {
-    debugPrint('[INCLINE] AppleHealthKitProvider: Recording HKWorkout ($title, $caloriesBurned kcal)');
-    return true;
+    if (!await isAvailable()) return const {};
+    try {
+      return await _channel.invokeMapMethod<String, dynamic>('readDailyMetrics') ??
+          const {};
+    } catch (error) {
+      debugPrint('[NativeHealthBridge] Apple Health read error: $error');
+      return const {};
+    }
   }
 }
 
-/// Android Google Health Connect / Samsung Health Provider Implementation
+/// Read-only Android Health Connect provider.
 class AndroidHealthConnectProvider implements NativeHealthProvider {
+  static const MethodChannel _channel =
+      MethodChannel('com.incline/native_health');
+
   @override
   String get name => 'Google Health Connect';
 
   @override
   Future<bool> isAvailable() async {
-    return !kIsWeb && Platform.isAndroid;
+    if (kIsWeb || !Platform.isAndroid) return false;
+    try {
+      return await _channel.invokeMethod<bool>('isHealthDataAvailable') ?? false;
+    } catch (error) {
+      debugPrint('[NativeHealthBridge] Health Connect availability error: $error');
+      return false;
+    }
   }
 
   @override
   Future<bool> requestPermissions() async {
-    // In production, launches Health Connect permission contract (androidx.health.connect.client)
-    debugPrint('[INCLINE] AndroidHealthConnectProvider: Requesting Health Connect permissions');
-    return true;
+    if (!await isAvailable()) return false;
+    try {
+      return await _channel.invokeMethod<bool>('requestPermissions') ?? false;
+    } catch (error) {
+      debugPrint('[NativeHealthBridge] Health Connect permission error: $error');
+      return false;
+    }
   }
 
   @override
   Future<Map<String, dynamic>> readDailyMetrics() async {
-    final telemetry = WatchSyncService.instance.data;
-    return {
-      'steps': telemetry.steps,
-      'activeCalories': telemetry.activeCalories,
-      'heartRate': telemetry.heartRate,
-      'sleepHours': telemetry.sleepHours,
-      'workoutMinutes': telemetry.workoutMinutes,
-    };
-  }
-
-  @override
-  Future<bool> writeCompletedWorkout({
-    required String title,
-    required DateTime startTime,
-    required DateTime endTime,
-    required int caloriesBurned,
-  }) async {
-    debugPrint('[INCLINE] AndroidHealthConnectProvider: Writing ExerciseSessionRecord ($title, $caloriesBurned kcal)');
-    return true;
+    if (!await isAvailable()) return const {};
+    try {
+      return await _channel.invokeMapMethod<String, dynamic>('readDailyMetrics') ??
+          const {};
+    } catch (error) {
+      debugPrint('[NativeHealthBridge] Health Connect read error: $error');
+      return const {};
+    }
   }
 }
 
@@ -119,11 +116,9 @@ class NativeHealthBridge {
   /// Shows an M3 Health Permissions Disclosure modal explaining telemetry usage
   /// Programmatically request health telemetry permissions
   Future<bool> requestPermissions() async {
-    final granted = await _activeProvider?.requestPermissions() ?? true;
-    if (granted) {
-      await WatchSyncService.instance.syncNow();
-    }
-    return granted;
+    final provider = _activeProvider;
+    if (provider == null || !await provider.isAvailable()) return false;
+    return provider.requestPermissions();
   }
 
   Future<bool> showPermissionsRationaleDialog(BuildContext context) async {
@@ -158,7 +153,9 @@ class NativeHealthBridge {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Synchronize authentic biometric telemetry to power your personalized training and contrast recovery routines.',
+              isIOS
+                  ? 'Read the latest samples saved in Apple Health. Heart rate updates when Apple Health receives new samples from your devices.'
+                  : 'Read the latest records saved in Health Connect. New values appear when your wearable or health apps write records; Incline refreshes while it is open.',
               style: GoogleFonts.outfit(fontSize: 13, color: context.textSecondary, height: 1.4),
             ),
             const SizedBox(height: 14),
@@ -171,13 +168,13 @@ class NativeHealthBridge {
               ),
               child: Column(
                 children: [
-                  _permissionRow(Icons.directions_walk_rounded, 'Daily Steps', 'Calibrates daily NEAT activity', context),
+                  _permissionRow(Icons.directions_walk_rounded, 'Daily Steps', 'Shows recorded steps for today', context),
                   const SizedBox(height: 8),
                   _permissionRow(Icons.local_fire_department_rounded, 'Active Calories', 'Monitors workout energy output', context),
                   const SizedBox(height: 8),
-                  _permissionRow(Icons.favorite_rounded, 'Heart Rate', 'Tracks contrast suite HRV & recovery', context),
+                  _permissionRow(Icons.favorite_rounded, 'Heart Rate', 'Shows the latest saved heart-rate sample', context),
                   const SizedBox(height: 8),
-                  _permissionRow(Icons.bedtime_rounded, 'Sleep Telemetry', 'Adapts morning training intensity', context),
+                  _permissionRow(Icons.bedtime_rounded, 'Sleep & HRV', 'Shows recorded sleep and HRV when available', context),
                 ],
               ),
             ),
@@ -191,10 +188,7 @@ class NativeHealthBridge {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              granted = await _activeProvider?.requestPermissions() ?? true;
-              if (granted) {
-                await WatchSyncService.instance.syncNow();
-              }
+              granted = await requestPermissions();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: context.brandAccent,

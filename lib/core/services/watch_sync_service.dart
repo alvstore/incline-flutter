@@ -1,49 +1,49 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/models.dart';
 
-/// Smart Health & Daily Telemetry Synchronization Service
-/// Seamlessly synchronizes with Health Connect, Apple Health, and on-device health sensors.
-/// Persists customized targets and real daily telemetry via SharedPreferences.
-class WatchSyncService extends ChangeNotifier {
+import '../models/models.dart';
+import 'native_health_bridge.dart';
+
+/// Reads real native health samples and keeps member-defined goals locally.
+/// Missing samples stay unavailable; the app never manufactures health values.
+class WatchSyncService extends ChangeNotifier with WidgetsBindingObserver {
   static final WatchSyncService instance = WatchSyncService._internal();
+
   WatchSyncService._internal() {
+    WidgetsBinding.instance.addObserver(this);
     _detectEcosystem();
-    init();
+    _ready = init();
   }
 
-  String _watchBrand = 'Health Tracking Device';
-  String _ecosystemSubtitle = 'Health Connect • Fitness Tracker';
-  IconData _watchIcon = Icons.watch_rounded;
+  Timer? _foregroundRefreshTimer;
+
+  late final Future<void> _ready;
+
+  String _watchBrand = 'Health data';
+  String _ecosystemSubtitle = 'No health provider available';
+  IconData _watchIcon = Icons.health_and_safety_outlined;
 
   String get watchBrand => _watchBrand;
   String get ecosystemSubtitle => _ecosystemSubtitle;
   IconData get watchIcon => _watchIcon;
+  String get heartRateVariabilityMetricName {
+    if (kIsWeb) return 'HRV';
+    if (Platform.isAndroid) return 'RMSSD';
+    if (Platform.isIOS) return 'SDNN';
+    return 'HRV';
+  }
 
-  WatchSyncData _data = WatchSyncData(
-    steps: 0,
-    goalSteps: 10000,
-    activeCalories: 0,
-    goalCalories: 750,
-    heartRate: 0,
-    sleepHours: 0.0,
-    goalSleepHours: 8.0,
-    sleepScore: 0,
-    workoutMinutes: 0,
-    goalWorkoutMinutes: 60,
-    lastSyncTime: DateTime.now(),
-    isConnected: false,
-    hasSyncedToday: false,
-  );
+  WatchSyncData _data = const WatchSyncData();
+  WatchSyncData get data => _data;
 
   bool _isSyncing = false;
-  bool _isInitialized = false;
-
-  WatchSyncData get data => _data;
   bool get isSyncing => _isSyncing;
+
+  bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
   static const String _prefGoalSteps = 'health_goal_steps';
@@ -54,307 +54,376 @@ class WatchSyncService extends ChangeNotifier {
   static const String _prefTodaySteps = 'health_today_steps';
   static const String _prefTodayCalories = 'health_today_calories';
   static const String _prefTodaySleep = 'health_today_sleep';
-  static const String _prefTodaySleepScore = 'health_today_sleep_score';
+  static const String _legacySleepScorePreference = 'health_today_sleep_score';
   static const String _prefTodayWorkout = 'health_today_workout';
+  static const String _prefHeartRate = 'health_today_heart_rate';
+  static const String _prefHeartRateAt = 'health_today_heart_rate_at';
+  static const String _prefHrv = 'health_today_hrv_ms';
+  static const String _prefHrvAt = 'health_today_hrv_at';
   static const String _prefLastSyncIso = 'health_last_sync_iso';
-  static const String _prefWearableConnected = 'health_wearable_connected';
+  static const String _prefDeviceData = 'health_native_data_available';
+  static const String _prefManualSleep = 'health_sleep_is_manual';
   static const String _prefTelemetryDate = 'health_telemetry_date';
+  static const String _prefDataVersion = 'health_telemetry_data_version';
+  static const String _currentDataVersion = 'native_health_2';
 
-  /// Initializes persisted health telemetry and user-defined targets
   Future<void> init() async {
+    if (_isInitialized) return;
+
     try {
       final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      final today = _dateKey(now);
+      final storedDate = prefs.getString(_prefTelemetryDate);
+      final isSameDay = storedDate == today;
+
+      // Old builds stored synthetic steps/calories from exercise-set taps. Clear
+      // those unverified values once and retain only manually entered sleep.
+      if (prefs.getString(_prefDataVersion) != _currentDataVersion) {
+        await prefs.remove(_prefTodaySteps);
+        await prefs.remove(_prefTodayCalories);
+        await prefs.remove(_prefTodayWorkout);
+        await prefs.remove(_legacySleepScorePreference);
+        await prefs.remove(_prefHeartRate);
+        await prefs.remove(_prefHeartRateAt);
+        await prefs.remove(_prefHrv);
+        await prefs.remove(_prefHrvAt);
+        await prefs.remove(_prefLastSyncIso);
+        await prefs.remove(_prefDeviceData);
+        await prefs.setString(_prefDataVersion, _currentDataVersion);
+      }
+      // Legacy readiness scores were calculated from sleep duration, not a
+      // measured recovery source. Never present those as a clinical score.
+      await prefs.remove(_legacySleepScorePreference);
+
+      if (!isSameDay) {
+        await prefs.setString(_prefTelemetryDate, today);
+        await prefs.remove(_prefTodaySteps);
+        await prefs.remove(_prefTodayCalories);
+        await prefs.remove(_prefTodaySleep);
+        await prefs.remove(_prefTodayWorkout);
+        await prefs.remove(_prefHeartRate);
+        await prefs.remove(_prefHeartRateAt);
+        await prefs.remove(_prefHrv);
+        await prefs.remove(_prefHrvAt);
+        await prefs.remove(_prefLastSyncIso);
+        await prefs.remove(_prefDeviceData);
+        await prefs.remove(_prefManualSleep);
+      }
 
       final goalSteps = prefs.getInt(_prefGoalSteps) ?? 10000;
       final goalCalories = prefs.getInt(_prefGoalCalories) ?? 750;
       final goalSleep = prefs.getDouble(_prefGoalSleep) ?? 8.0;
       final goalWorkout = prefs.getInt(_prefGoalWorkout) ?? 60;
 
-      bool isConnected = prefs.getBool(_prefWearableConnected) ?? false;
-
-      final now = DateTime.now();
-      final todayDateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final savedDateStr = prefs.getString(_prefTelemetryDate);
-      final bool isSameDay = savedDateStr == todayDateStr;
-
-      int steps = 0;
-      int calories = 0;
-      double sleepHours = 0.0;
-      int sleepScore = 0;
-      int workoutMinutes = 0;
-
-      if (isSameDay) {
-        steps = prefs.getInt(_prefTodaySteps) ?? 0;
-        calories = prefs.getInt(_prefTodayCalories) ?? 0;
-        sleepHours = prefs.getDouble(_prefTodaySleep) ?? 0.0;
-        sleepScore = prefs.getInt(_prefTodaySleepScore) ?? 0;
-        workoutMinutes = prefs.getInt(_prefTodayWorkout) ?? 0;
-
-        // Cleanse any legacy fabricated artifacts or fake wearable connection
-        if (steps == 5420 || calories == 228 || (isConnected && steps == 0 && calories == 0)) {
-          steps = 0;
-          calories = 0;
-          isConnected = false;
-          await prefs.setInt(_prefTodaySteps, 0);
-          await prefs.setInt(_prefTodayCalories, 0);
-          await prefs.setBool(_prefWearableConnected, false);
-        }
-      } else {
-        // Daily rollover: reset daily telemetry for the new day
-        await prefs.setString(_prefTelemetryDate, todayDateStr);
-        await prefs.setInt(_prefTodaySteps, 0);
-        await prefs.setInt(_prefTodayCalories, 0);
-        await prefs.setDouble(_prefTodaySleep, 0.0);
-        await prefs.setInt(_prefTodaySleepScore, 0);
-        await prefs.setInt(_prefTodayWorkout, 0);
+      final steps = isSameDay ? (prefs.getInt(_prefTodaySteps) ?? -1) : -1;
+      final calories =
+          isSameDay ? (prefs.getInt(_prefTodayCalories) ?? -1) : -1;
+      final sleepHours =
+          isSameDay ? (prefs.getDouble(_prefTodaySleep) ?? 0.0) : 0.0;
+      final workout =
+          isSameDay ? (prefs.getInt(_prefTodayWorkout) ?? -1) : -1;
+      var heartRate = isSameDay ? (prefs.getInt(_prefHeartRate) ?? -1) : -1;
+      DateTime? heartRateAt = DateTime.tryParse(
+        prefs.getString(_prefHeartRateAt) ?? '',
+      );
+      if (heartRateAt == null ||
+          now.difference(heartRateAt) > const Duration(hours: 24) ||
+          heartRate <= 0) {
+        heartRate = -1;
+        heartRateAt = null;
       }
 
-      final lastSyncStr = prefs.getString(_prefLastSyncIso);
-      DateTime lastSync = now;
-      if (lastSyncStr != null) {
-        final parsed = DateTime.tryParse(lastSyncStr);
-        if (parsed != null) lastSync = parsed;
+      var hrv = isSameDay ? (prefs.getDouble(_prefHrv) ?? -1) : -1;
+      DateTime? hrvAt = DateTime.tryParse(prefs.getString(_prefHrvAt) ?? '');
+      if (hrvAt == null || now.difference(hrvAt) > const Duration(hours: 24) || hrv <= 0) {
+        hrv = -1;
+        hrvAt = null;
       }
-
-      final bool hasSyncedToday = isSameDay && (steps > 0 || calories > 0 || sleepHours > 0 || workoutMinutes > 0);
-
+      final lastSync = isSameDay
+          ? DateTime.tryParse(prefs.getString(_prefLastSyncIso) ?? '')
+          : null;
+      final deviceData = isSameDay && (prefs.getBool(_prefDeviceData) ?? false);
+      final manualSleep = isSameDay &&
+          (prefs.getBool(_prefManualSleep) ?? (sleepHours > 0));
       _data = WatchSyncData(
         steps: steps,
         goalSteps: goalSteps,
         activeCalories: calories,
         goalCalories: goalCalories,
-        heartRate: 0,
+        heartRate: heartRate,
+        heartRateRecordedAt: heartRateAt,
+        heartRateVariabilityMs: hrv,
+        heartRateVariabilityRecordedAt: hrvAt,
         sleepHours: sleepHours,
         goalSleepHours: goalSleep,
-        sleepScore: sleepScore,
-        workoutMinutes: workoutMinutes,
+        isManualSleep: manualSleep,
+        workoutMinutes: workout,
         goalWorkoutMinutes: goalWorkout,
         lastSyncTime: lastSync,
-        isConnected: isConnected,
-        hasSyncedToday: hasSyncedToday,
+        isConnected: deviceData,
+        hasSyncedToday: deviceData,
       );
 
       _isInitialized = true;
+      if (_data.isConnected &&
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        _startForegroundRefresh();
+      }
       notifyListeners();
-    } catch (e) {
-      debugPrint('[WatchSyncService] Init error: $e');
+    } catch (error) {
+      debugPrint('[WatchSyncService] Init error: $error');
     }
   }
 
   void _detectEcosystem() {
     if (kIsWeb) {
-      _watchBrand = 'Health Tracking Device';
-      _ecosystemSubtitle = 'Device Telemetry';
+      _watchBrand = 'Health data';
+      _ecosystemSubtitle = 'Native health sync is unavailable on web';
       _watchIcon = Icons.health_and_safety_outlined;
-      return;
-    }
-
-    if (Platform.isIOS) {
-      _watchBrand = 'Health Tracking Device';
-      _ecosystemSubtitle = 'Apple Health • Sensor Telemetry';
+    } else if (Platform.isIOS) {
+      _watchBrand = 'Apple Health';
+      _ecosystemSubtitle = 'Apple Health · latest saved samples';
       _watchIcon = Icons.favorite_rounded;
-      return;
-    }
-
-    if (Platform.isAndroid) {
-      _watchBrand = 'Health Tracking Device';
-      _ecosystemSubtitle = 'Health Connect • Optical Sensors';
+    } else if (Platform.isAndroid) {
+      _watchBrand = 'Health Connect';
+      _ecosystemSubtitle = 'Connect Health Connect to read saved health records';
       _watchIcon = Icons.watch_rounded;
     }
   }
 
-  /// Updates member custom targets and persists them
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (_data.isConnected) {
+        unawaited(syncNow());
+        _startForegroundRefresh();
+      }
+    } else {
+      _foregroundRefreshTimer?.cancel();
+      _foregroundRefreshTimer = null;
+    }
+  }
+
+  void _startForegroundRefresh() {
+    _foregroundRefreshTimer?.cancel();
+    _foregroundRefreshTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        unawaited(syncNow());
+      }
+    });
+  }
+
   Future<void> updateGoals({
     int? steps,
     int? calories,
     double? sleepHours,
     int? workoutMinutes,
   }) async {
+    await _ready;
     try {
       final prefs = await SharedPreferences.getInstance();
-
       final newGoalSteps = steps ?? _data.goalSteps;
-      final newGoalCal = calories ?? _data.goalCalories;
+      final newGoalCalories = calories ?? _data.goalCalories;
       final newGoalSleep = sleepHours ?? _data.goalSleepHours;
       final newGoalWorkout = workoutMinutes ?? _data.goalWorkoutMinutes;
 
       await prefs.setInt(_prefGoalSteps, newGoalSteps);
-      await prefs.setInt(_prefGoalCalories, newGoalCal);
+      await prefs.setInt(_prefGoalCalories, newGoalCalories);
       await prefs.setDouble(_prefGoalSleep, newGoalSleep);
       await prefs.setInt(_prefGoalWorkout, newGoalWorkout);
 
       _data = _data.copyWith(
         goalSteps: newGoalSteps,
-        goalCalories: newGoalCal,
+        goalCalories: newGoalCalories,
         goalSleepHours: newGoalSleep,
         goalWorkoutMinutes: newGoalWorkout,
       );
-
       notifyListeners();
-    } catch (e) {
-      debugPrint('[WatchSyncService] updateGoals error: $e');
+    } catch (error) {
+      debugPrint('[WatchSyncService] updateGoals error: $error');
     }
   }
 
-  /// Logs sleep duration and score (e.g., if watch was off-wrist or manual input)
+  /// Records member-entered sleep when the watch was off-wrist.
   Future<void> logSleep({
     required double hours,
-    int? qualityScore,
   }) async {
+    await _ready;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final score = qualityScore ?? ((hours / _data.goalSleepHours) * 90).clamp(50, 99).toInt();
-
+      final now = DateTime.now();
       await prefs.setDouble(_prefTodaySleep, hours);
-      await prefs.setInt(_prefTodaySleepScore, score);
-      await prefs.setString(_prefLastSyncIso, DateTime.now().toIso8601String());
+      await prefs.setBool(_prefManualSleep, true);
+      await prefs.setString(_prefTelemetryDate, _dateKey(now));
 
       _data = _data.copyWith(
         sleepHours: hours,
-        sleepScore: score,
-        hasSyncedToday: true,
-        lastSyncTime: DateTime.now(),
+        isManualSleep: true,
+        hasSyncedToday: _data.isConnected,
       );
-
       notifyListeners();
-    } catch (e) {
-      debugPrint('[WatchSyncService] logSleep error: $e');
+    } catch (error) {
+      debugPrint('[WatchSyncService] logSleep error: $error');
     }
   }
 
-  /// Toggles or updates wearable device pairing status
-  Future<void> setWearableConnected(bool connected) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_prefWearableConnected, connected);
-
-      _data = _data.copyWith(
-        isConnected: connected,
-        heartRate: connected ? _data.heartRate : 0,
-      );
-
-      notifyListeners();
-    } catch (e) {
-      debugPrint('[WatchSyncService] setWearableConnected error: $e');
-    }
-  }
-
-  /// Manually log authentic activity (e.g. if member doesn't have a smartwatch)
-  Future<void> logManualActivity({
-    int? steps,
-    int? calories,
-    int? workoutMinutes,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final now = DateTime.now();
-
-      final newSteps = steps ?? _data.steps;
-      final newCalories = calories ?? _data.activeCalories;
-      final newWorkout = workoutMinutes ?? _data.workoutMinutes;
-
-      await prefs.setInt(_prefTodaySteps, newSteps);
-      await prefs.setInt(_prefTodayCalories, newCalories);
-      await prefs.setInt(_prefTodayWorkout, newWorkout);
-      await prefs.setString(_prefLastSyncIso, now.toIso8601String());
-
-      _data = _data.copyWith(
-        steps: newSteps,
-        activeCalories: newCalories,
-        workoutMinutes: newWorkout,
-        lastSyncTime: now,
-        hasSyncedToday: true,
-      );
-
-      notifyListeners();
-    } catch (e) {
-      debugPrint('[WatchSyncService] logManualActivity error: $e');
-    }
-  }
-
-  /// Syncs data with connected watch / Health Connect / HealthKit.
-  /// Purely DETERMINISTIC and IDEMPOTENT: Multiple refreshes or taps
-  /// never invent fake numbers or randomly increment steps or calories.
+  /// Reads the native provider. No values are inferred from exercise taps.
   Future<void> syncNow() async {
+    await _ready;
+    if (_isSyncing) return;
+
     _isSyncing = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 600));
-
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final now = DateTime.now();
-      final todayDateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      await prefs.setString(_prefTelemetryDate, todayDateStr);
-
-
-      // Deterministic values: keep existing authentic numbers stable across refreshes
-      int syncedSteps = _data.steps;
-      int syncedCalories = _data.activeCalories;
-      final double syncedSleep = _data.sleepHours;
-      final int syncedSleepScore = _data.sleepScore;
-      final int syncedWorkout = _data.workoutMinutes;
-
-      // Cleanse 5420 steps and 228 calories if present from legacy state
-      if (syncedSteps == 5420) syncedSteps = 0;
-      if (syncedCalories == 228) syncedCalories = 0;
-
-      // Authentic derivation: active calories are derived from actual workout minutes
-      if (syncedCalories == 0 && syncedWorkout > 0) {
-        syncedCalories = (syncedWorkout * 7).round();
+      final provider = NativeHealthBridge.instance.activeProvider;
+      if (provider == null || !await provider.isAvailable()) {
+        _ecosystemSubtitle = provider is AndroidHealthConnectProvider
+            ? 'Install or update Health Connect to connect health data'
+            : 'Apple Health is unavailable on this device';
+        _foregroundRefreshTimer?.cancel();
+        _foregroundRefreshTimer = null;
+        _data = _data.copyWith(
+          steps: -1,
+          activeCalories: -1,
+          workoutMinutes: -1,
+          heartRate: -1,
+          clearHeartRateRecordedAt: true,
+          heartRateVariabilityMs: -1,
+          clearHeartRateVariabilityRecordedAt: true,
+          isConnected: false,
+          hasSyncedToday: false,
+        );
+        return;
       }
 
-      // Heart rate: retain authentic sensor reading if present, otherwise 0 (no fake heart rate)
-      final int syncedHeartRate = _data.heartRate;
+      _ecosystemSubtitle = provider is AndroidHealthConnectProvider
+          ? 'Health Connect · refreshes every 5 minutes while Incline is open'
+          : 'Apple Health · refreshes every 5 minutes while Incline is open';
 
-      await prefs.setInt(_prefTodaySteps, syncedSteps);
-      await prefs.setInt(_prefTodayCalories, syncedCalories);
-      await prefs.setDouble(_prefTodaySleep, syncedSleep);
-      await prefs.setInt(_prefTodaySleepScore, syncedSleepScore);
-      await prefs.setInt(_prefTodayWorkout, syncedWorkout);
-      await prefs.setString(_prefLastSyncIso, now.toIso8601String());
+      final values = await provider.readDailyMetrics();
+      final now = DateTime.now();
+
+      final hasStepData = values['hasStepsData'] == true;
+      final hasCaloriesData = values['hasCaloriesData'] == true;
+      final hasWorkoutData = values['hasWorkoutData'] == true;
+      final hasHeartRateData = values['hasHeartRateData'] == true;
+      final hasHrvData = values['hasHrvData'] == true;
+      final hasSleepData = values['hasSleepData'] == true;
+
+      final steps = hasStepData ? _toInt(values['steps']) : -1;
+      final calories =
+          hasCaloriesData ? _toInt(values['activeCalories']) : -1;
+      final workout =
+          hasWorkoutData ? _toInt(values['workoutMinutes']) : -1;
+      final heartRate =
+          hasHeartRateData ? _toInt(values['heartRate']) : -1;
+      final heartRateAt = hasHeartRateData
+          ? DateTime.tryParse(values['heartRateRecordedAt']?.toString() ?? '')
+          : null;
+      final hrv = hasHrvData ? _toDouble(values['heartRateVariabilityMs']) : -1.0;
+      final hrvAt = hasHrvData
+          ? DateTime.tryParse(values['heartRateVariabilityRecordedAt']?.toString() ?? '')
+          : null;
+      final sleepValue = hasSleepData ? _toDouble(values['sleepHours']) : null;
+      final keepManualSleep =
+          !hasSleepData && _data.isManualSleep && _data.sleepHours > 0;
+      final sleep = sleepValue ?? (keepManualSleep ? _data.sleepHours : 0.0);
+      final hasDeviceData = values['hasData'] == true ||
+          hasStepData ||
+          hasCaloriesData ||
+          hasWorkoutData ||
+          hasHeartRateData ||
+          hasHrvData ||
+          hasSleepData;
 
       _data = _data.copyWith(
-        steps: syncedSteps,
-        activeCalories: syncedCalories,
-        sleepHours: syncedSleep,
-        sleepScore: syncedSleepScore,
-        workoutMinutes: syncedWorkout,
-        heartRate: syncedHeartRate,
+        steps: steps,
+        activeCalories: calories,
+        workoutMinutes: workout,
+        heartRate: heartRate,
+        heartRateRecordedAt: heartRateAt,
+        clearHeartRateRecordedAt: !hasHeartRateData,
+        heartRateVariabilityMs: hrv,
+        heartRateVariabilityRecordedAt: hrvAt,
+        clearHeartRateVariabilityRecordedAt: !hasHrvData,
+        sleepHours: sleep,
+        isManualSleep: keepManualSleep,
+        isConnected: hasDeviceData,
+        hasSyncedToday: hasDeviceData,
         lastSyncTime: now,
-        hasSyncedToday: true,
       );
-    } catch (e) {
-      debugPrint('[WatchSyncService] syncNow error: $e');
+
+      if (_data.isConnected &&
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        _startForegroundRefresh();
+      } else if (!_data.isConnected) {
+        _foregroundRefreshTimer?.cancel();
+        _foregroundRefreshTimer = null;
+      }
+
+      await _persistCurrentMetrics(now);
+    } catch (error) {
+      debugPrint('[WatchSyncService] syncNow error: $error');
     } finally {
       _isSyncing = false;
       notifyListeners();
     }
   }
 
-  /// Called whenever a set or exercise is completed in the workout player
-  void recordExerciseCompleted({required String exerciseName, required int sets}) {
-    final now = DateTime.now();
-    final newSteps = _data.steps + 45;
-    final newCalories = _data.activeCalories + (sets * 12);
-    final newWorkoutMinutes = _data.workoutMinutes + 3;
+  Future<void> _persistCurrentMetrics(DateTime now) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefTelemetryDate, _dateKey(now));
+    await prefs.setInt(_prefTodaySteps, _data.steps);
+    await prefs.setInt(_prefTodayCalories, _data.activeCalories);
+    await prefs.setDouble(_prefTodaySleep, _data.sleepHours);
+    await prefs.setInt(_prefTodayWorkout, _data.workoutMinutes);
+    await prefs.setBool(_prefDeviceData, _data.isConnected);
+    await prefs.setBool(_prefManualSleep, _data.isManualSleep);
+    await prefs.setString(_prefLastSyncIso, now.toIso8601String());
 
-    _data = _data.copyWith(
-      steps: newSteps,
-      activeCalories: newCalories,
-      workoutMinutes: newWorkoutMinutes,
-      heartRate: _data.heartRate,
-      lastSyncTime: now,
-      hasSyncedToday: true,
-    );
+    if (_data.heartRate >= 0 && _data.heartRateRecordedAt != null) {
+      await prefs.setInt(_prefHeartRate, _data.heartRate);
+      await prefs.setString(
+        _prefHeartRateAt,
+        _data.heartRateRecordedAt!.toIso8601String(),
+      );
+    } else {
+      await prefs.remove(_prefHeartRate);
+      await prefs.remove(_prefHeartRateAt);
+    }
+    if (_data.heartRateVariabilityMs >= 0 && _data.heartRateVariabilityRecordedAt != null) {
+      await prefs.setDouble(_prefHrv, _data.heartRateVariabilityMs);
+      await prefs.setString(_prefHrvAt, _data.heartRateVariabilityRecordedAt!.toIso8601String());
+    } else {
+      await prefs.remove(_prefHrv);
+      await prefs.remove(_prefHrvAt);
+    }
+  }
 
-    SharedPreferences.getInstance().then((prefs) {
-      prefs.setInt(_prefTodaySteps, newSteps);
-      prefs.setInt(_prefTodayCalories, newCalories);
-      prefs.setInt(_prefTodayWorkout, newWorkoutMinutes);
-      prefs.setString(_prefLastSyncIso, now.toIso8601String());
-    }).catchError((_) {});
+  int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return -1;
+  }
 
-    notifyListeners();
+  double _toDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return 0;
+  }
+
+  String _dateKey(DateTime date) =>
+      date.year.toString() +
+      '-' +
+      date.month.toString().padLeft(2, '0') +
+      '-' +
+      date.day.toString().padLeft(2, '0');
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _foregroundRefreshTimer?.cancel();
+    super.dispose();
   }
 }

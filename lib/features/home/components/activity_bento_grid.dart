@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import '../../../core/services/watch_sync_service.dart';
 import '../../../core/theme/incline_colors.dart';
 
 /// Data model representing daily activity metrics for the Activity Bento Grid.
@@ -15,24 +17,30 @@ class DailyActivityMetrics {
   final int targetSteps;
   final double sleepHours;
   final double targetSleepHours;
-  final int sleepScore;
   final bool hasSyncedToday;
   final bool isConnected;
+  final bool isManualSleep;
+  final DateTime? heartRateRecordedAt;
+  final double heartRateVariabilityMs;
+  final DateTime? heartRateVariabilityRecordedAt;
 
   const DailyActivityMetrics({
-    this.activeCalories = 0,
+    this.activeCalories = -1,
     this.targetCalories = 750,
-    this.workoutMinutes = 0,
+    this.workoutMinutes = -1,
     this.targetMinutes = 60,
-    this.heartRateBpm = 0,
+    this.heartRateBpm = -1,
     this.heartRateZone = 'Sensor Disconnected',
-    this.stepCount = 0,
+    this.stepCount = -1,
     this.targetSteps = 10000,
     this.sleepHours = 0.0,
     this.targetSleepHours = 8.0,
-    this.sleepScore = 0,
     this.hasSyncedToday = false,
     this.isConnected = false,
+    this.isManualSleep = false,
+    this.heartRateRecordedAt,
+    this.heartRateVariabilityMs = -1,
+    this.heartRateVariabilityRecordedAt,
   });
 
   DailyActivityMetrics copyWith({
@@ -46,9 +54,12 @@ class DailyActivityMetrics {
     int? targetSteps,
     double? sleepHours,
     double? targetSleepHours,
-    int? sleepScore,
     bool? hasSyncedToday,
     bool? isConnected,
+    bool? isManualSleep,
+    DateTime? heartRateRecordedAt,
+    double? heartRateVariabilityMs,
+    DateTime? heartRateVariabilityRecordedAt,
   }) {
     return DailyActivityMetrics(
       activeCalories: activeCalories ?? this.activeCalories,
@@ -61,9 +72,12 @@ class DailyActivityMetrics {
       targetSteps: targetSteps ?? this.targetSteps,
       sleepHours: sleepHours ?? this.sleepHours,
       targetSleepHours: targetSleepHours ?? this.targetSleepHours,
-      sleepScore: sleepScore ?? this.sleepScore,
       hasSyncedToday: hasSyncedToday ?? this.hasSyncedToday,
       isConnected: isConnected ?? this.isConnected,
+      isManualSleep: isManualSleep ?? this.isManualSleep,
+      heartRateRecordedAt: heartRateRecordedAt ?? this.heartRateRecordedAt,
+      heartRateVariabilityMs: heartRateVariabilityMs ?? this.heartRateVariabilityMs,
+      heartRateVariabilityRecordedAt: heartRateVariabilityRecordedAt ?? this.heartRateVariabilityRecordedAt,
     );
   }
 }
@@ -92,6 +106,7 @@ class ActivityBentoGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final hrvMetricName = WatchSyncService.instance.heartRateVariabilityMetricName;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,14 +138,14 @@ class ActivityBentoGrid extends StatelessWidget {
                       height: 7,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: (metrics.isConnected && metrics.heartRateBpm > 0)
+                        color: (metrics.heartRateBpm > 0)
                             ? InclineColors.thermalRed
                             : colorScheme.outlineVariant,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      (metrics.isConnected && metrics.heartRateBpm > 0)
+                      metrics.heartRateBpm > 0
                           ? '${metrics.heartRateBpm} BPM'
                           : '-- BPM',
                       style: GoogleFonts.outfit(
@@ -141,9 +156,12 @@ class ActivityBentoGrid extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      (metrics.isConnected && metrics.heartRateBpm > 0)
-                          ? '• ${metrics.heartRateZone}'
-                          : '• No Sensor',
+                      metrics.heartRateBpm > 0
+                          ? '• Last read ' +
+                              (metrics.heartRateRecordedAt == null
+                                  ? 'recently'
+                                  : DateFormat('h:mm a').format(metrics.heartRateRecordedAt!.toLocal()))
+                          : '• No recent reading',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: colorScheme.onSurfaceVariant,
@@ -243,13 +261,13 @@ class ActivityBentoGrid extends StatelessWidget {
             Expanded(
               child: _BentoMetricCard(
                 title: 'ACTIVE CALORIES',
-                value: (metrics.isConnected || metrics.activeCalories > 0)
+                value: metrics.activeCalories >= 0
                     ? '${metrics.activeCalories}'
                     : '--',
                 unit: 'kcal',
-                subtitle: (metrics.isConnected || metrics.activeCalories > 0)
+                subtitle: metrics.activeCalories >= 0
                     ? 'Goal: ${metrics.targetCalories} kcal'
-                    : 'Pair Watch to Track',
+                    : 'No Health sample',
                 icon: Icons.local_fire_department_rounded,
                 accentColor: InclineColors.accentOrange,
                 progress: metrics.targetCalories > 0
@@ -262,7 +280,7 @@ class ActivityBentoGrid extends StatelessWidget {
             Expanded(
               child: _BentoMetricCard(
                 title: 'DAILY STEPS',
-                value: (metrics.isConnected || metrics.stepCount > 0)
+                value: metrics.stepCount >= 0
                     ? _formatSteps(metrics.stepCount)
                     : '--',
                 unit: 'steps',
@@ -283,13 +301,13 @@ class ActivityBentoGrid extends StatelessWidget {
             Expanded(
               child: _BentoMetricCard(
                 title: 'WORKOUT TIME',
-                value: (metrics.isConnected || metrics.workoutMinutes > 0)
+                value: metrics.workoutMinutes >= 0
                     ? '${metrics.workoutMinutes}'
                     : '--',
                 unit: 'min',
-                subtitle: (metrics.isConnected || metrics.workoutMinutes > 0)
+                subtitle: metrics.workoutMinutes >= 0
                     ? 'Goal: ${metrics.targetMinutes} min'
-                    : 'Start Workout',
+                    : 'No Health sample',
                 icon: Icons.timer_outlined,
                 accentColor: InclineColors.accentOrange,
                 progress: metrics.targetMinutes > 0
@@ -304,9 +322,13 @@ class ActivityBentoGrid extends StatelessWidget {
                 title: 'SLEEP & RECOVERY',
                 value: metrics.sleepHours > 0 ? metrics.sleepHours.toStringAsFixed(1) : '--',
                 unit: 'hrs',
-                subtitle: metrics.sleepScore > 0
-                    ? '${metrics.sleepScore}% Restorative'
-                    : 'Goal: ${metrics.targetSleepHours.toStringAsFixed(1)} hrs',
+                subtitle: metrics.heartRateVariabilityMs > 0
+                    ? 'HRV $hrvMetricName ${metrics.heartRateVariabilityMs.toStringAsFixed(0)} ms · ${metrics.heartRateVariabilityRecordedAt == null ? 'measured' : DateFormat('h:mm a').format(metrics.heartRateVariabilityRecordedAt!.toLocal())}'
+                    : (metrics.sleepHours > 0 && metrics.isManualSleep
+                        ? 'Manual sleep · no HRV $hrvMetricName sample'
+                        : (metrics.sleepHours > 0
+                            ? 'Sleep tracked · no HRV $hrvMetricName sample'
+                            : 'No sleep or HRV $hrvMetricName sample')),
                 icon: Icons.nightlight_round,
                 accentColor: InclineColors.thermalRed,
                 progress: metrics.targetSleepHours > 0
@@ -318,8 +340,13 @@ class ActivityBentoGrid extends StatelessWidget {
           ],
         ),
 
-        // Unsynced Guidance Banner if no telemetry received today
-        if (!metrics.hasSyncedToday && metrics.stepCount == 0 && metrics.activeCalories == 0) ...[
+        // Guidance when the native health provider has no recent samples
+        if (!metrics.hasSyncedToday &&
+            metrics.stepCount < 0 &&
+            metrics.activeCalories < 0 &&
+            metrics.workoutMinutes < 0 &&
+            metrics.heartRateBpm < 0 &&
+            metrics.heartRateVariabilityMs < 0) ...[
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -336,7 +363,7 @@ class ActivityBentoGrid extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'No device sync today yet. Tap "Sync" or "Targets" to calibrate your daily health data.',
+                    'No recent health samples. Connect your health provider or check that your device has synced.',
                     style: GoogleFonts.inter(
                       fontSize: 11.5,
                       color: colorScheme.onSurfaceVariant,

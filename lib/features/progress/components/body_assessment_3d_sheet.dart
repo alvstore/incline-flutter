@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/models.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/error_mapper.dart';
 import '../../../core/theme/app_theme.dart';
 import 'howbody_qr_scanner_sheet.dart';
 import 'anatomical_3d_volumetric_viewer.dart';
@@ -39,6 +40,11 @@ class BodyAssessment3DSheet extends StatefulWidget {
 typedef InBodyScanSheet = BodyAssessment3DSheet;
 
 class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
+  Color _surfaceFor(bool isDark) => isDark ? InclineColors.cardSurface : InclineColors.lightCardSurface;
+  Color _borderFor(bool isDark) => isDark ? InclineColors.cardBorder : InclineColors.lightCardBorder;
+  Color _recessedFor(bool isDark) => isDark ? InclineColors.cardRecessed : Colors.white;
+  Color _primaryTextFor(bool isDark) => isDark ? InclineColors.textPrimary : InclineColors.lightTextPrimary;
+
   bool _isLoading = true;
   bool _isSavingManual = false;
   bool _showManualEntry = false;
@@ -156,7 +162,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
       debugPrint('[INCLINE] Save measurement notice: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Notice saving measurement: $e')),
+          SnackBar(content: Text(UserFriendlyErrorMapper.toGeneralErrorMessage(e, action: 'measurement save'))),
         );
       }
     } finally {
@@ -165,6 +171,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
   }
 
   void _openPhotoZoom(BuildContext context, PosturePhoto photo) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     HapticFeedback.lightImpact();
     showDialog(
       context: context,
@@ -221,16 +228,16 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                     errorBuilder: (context, error, stack) {
                       return Container(
                         height: 300,
-                        color: InclineColors.cardRecessed,
+                        color: _recessedFor(isDark),
                         alignment: Alignment.center,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 48),
+                            Icon(Icons.broken_image_outlined, color: isDark ? Colors.white54 : Colors.black45, size: 48),
                             const SizedBox(height: 8),
                             Text(
                               'Unable to load scan image',
-                              style: GoogleFonts.outfit(color: Colors.white54, fontSize: 12),
+                              style: GoogleFonts.outfit(color: isDark ? Colors.white70 : Colors.black54, fontSize: 12),
                             ),
                           ],
                         ),
@@ -244,7 +251,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                 'Pinch to zoom • Drag to pan',
                 style: GoogleFonts.inter(
                   fontSize: 11,
-                  color: Colors.white54,
+                  color: isDark ? Colors.white70 : Colors.black54,
                 ),
               ),
             ],
@@ -329,7 +336,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                               style: GoogleFonts.outfit(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
-                                color: InclineColors.textPrimary,
+                                color: _primaryTextFor(isDark),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -363,7 +370,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
 
           const SizedBox(height: 8),
           Divider(
-            color: InclineColors.cardBorder,
+            color: _borderFor(isDark),
             height: 1,
           ),
         ],
@@ -445,10 +452,10 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.92,
       decoration: BoxDecoration(
-        color: InclineColors.bgPrimary,
+        color: theme.scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         border: Border.all(
-          color: InclineColors.cardBorder,
+          color: _borderFor(isDark),
           width: 1,
         ),
       ),
@@ -475,7 +482,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: InclineColors.cardSurface,
+        color: _surfaceFor(isDark),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: const Color(0x33F0441C),
@@ -610,10 +617,10 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
       decoration: BoxDecoration(
-        color: InclineColors.cardSurface,
+        color: _surfaceFor(isDark),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: InclineColors.cardBorder,
+          color: _borderFor(isDark),
         ),
       ),
       child: Column(
@@ -740,7 +747,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
-        color: InclineColors.cardSurface,
+        color: _surfaceFor(isDark),
         borderRadius: BorderRadius.circular(14),
       ),
       child: SingleChildScrollView(
@@ -760,9 +767,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? (InclineColors.cardRecessed)
-                      : Colors.transparent,
+                  color: isSelected ? _recessedFor(isDark) : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: isSelected
                       ? [
@@ -815,7 +820,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     required HowbodyBodyReport? body,
   }) {
     if (body == null) {
-      return _buildSubSectionEmpty('No body composition metrics available in this scan.');
+      return _buildSubSectionEmpty('No body composition metrics available in this scan.', isDark: isDark);
     }
 
     final weightStr = body.weight != null ? '${body.weight!.toStringAsFixed(1)} kg' : '-- kg';
@@ -903,10 +908,10 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: InclineColors.cardSurface,
+            color: _surfaceFor(isDark),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: InclineColors.cardBorder,
+              color: _borderFor(isDark),
             ),
           ),
           child: Column(
@@ -943,7 +948,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: InclineColors.cardSurface,
+              color: _surfaceFor(isDark),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0x33F0441C)),
             ),
@@ -985,7 +990,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     required HowbodyPostureReport? posture,
   }) {
     if (posture == null) {
-      return _buildSubSectionEmpty('No posture alignment data available in this scan session.');
+      return _buildSubSectionEmpty('No posture alignment data available in this scan session.', isDark: isDark);
     }
 
     final score = posture.score ?? 0;
@@ -998,7 +1003,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: InclineColors.cardSurface,
+            color: _surfaceFor(isDark),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: const Color(0x33F0441C),
@@ -1080,10 +1085,10 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: InclineColors.cardSurface,
+            color: _surfaceFor(isDark),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: InclineColors.cardBorder,
+              color: _borderFor(isDark),
             ),
           ),
           child: Column(
@@ -1117,7 +1122,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     required List<PosturePhoto> photos,
   }) {
     if (photos.isEmpty) {
-      return _buildSubSectionEmpty('No multi-angle camera images saved for this scan session.');
+      return _buildSubSectionEmpty('No multi-angle camera images saved for this scan session.', isDark: isDark);
     }
 
     return Column(
@@ -1166,10 +1171,10 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
               onTap: () => _openPhotoZoom(context, photo),
               child: Container(
                 decoration: BoxDecoration(
-                  color: InclineColors.cardSurface,
+                  color: _surfaceFor(isDark),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: InclineColors.cardBorder,
+                    color: _borderFor(isDark),
                   ),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -1194,11 +1199,11 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 32),
+                                Icon(Icons.broken_image_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 32),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Photo unavailable',
-                                  style: GoogleFonts.outfit(fontSize: 10, color: Colors.white38),
+                                  style: GoogleFonts.outfit(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
                                 ),
                               ],
                             ),
@@ -1263,7 +1268,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     required HowbodyPostureReport? posture,
   }) {
     if (posture == null) {
-      return _buildSubSectionEmpty('No circumference measurements recorded in this scan.');
+      return _buildSubSectionEmpty('No circumference measurements recorded in this scan.', isDark: isDark);
     }
 
     String cStr(double? val) => val != null ? '${val.toStringAsFixed(1)} cm' : '--';
@@ -1285,10 +1290,10 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: InclineColors.cardSurface,
+            color: _surfaceFor(isDark),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: InclineColors.cardBorder,
+              color: _borderFor(isDark),
             ),
           ),
           child: Column(
@@ -1377,10 +1382,10 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: InclineColors.cardSurface,
+              color: _surfaceFor(isDark),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: InclineColors.cardBorder,
+                color: _borderFor(isDark),
               ),
             ),
             child: Column(
@@ -1487,7 +1492,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: InclineColors.cardSurface,
+                  color: _surfaceFor(isDark),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -1542,7 +1547,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
   // ---------------------------------------------------------------------------
   // Sub-widgets & Component Builders
   // ---------------------------------------------------------------------------
-  Widget _buildSubSectionEmpty(String message) {
+  Widget _buildSubSectionEmpty(String message, {required bool isDark}) {
     return Container(
       padding: const EdgeInsets.all(20),
       alignment: Alignment.center,
@@ -1550,7 +1555,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
         message,
         style: GoogleFonts.inter(
           fontSize: 12,
-          color: Colors.white54,
+          color: isDark ? Colors.white70 : Colors.black54,
         ),
         textAlign: TextAlign.center,
       ),
@@ -1568,10 +1573,10 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: InclineColors.cardSurface,
+        color: _surfaceFor(isDark),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: InclineColors.cardBorder,
+          color: _borderFor(isDark),
         ),
       ),
       child: Column(
@@ -1598,7 +1603,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
             style: GoogleFonts.outfit(
               fontSize: 19,
               fontWeight: FontWeight.w800,
-              color: InclineColors.textPrimary,
+              color: _primaryTextFor(isDark),
             ),
           ),
           const SizedBox(height: 3),
@@ -1762,12 +1767,12 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
             ),
             isDense: true,
             filled: true,
-            fillColor: InclineColors.cardSurface,
+            fillColor: _surfaceFor(isDark),
             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: InclineColors.cardBorder,
+                color: _borderFor(isDark),
               ),
             ),
           ),

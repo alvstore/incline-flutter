@@ -78,6 +78,8 @@ class _Anatomical3DVolumetricViewerState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final modelSource = _prepareObjViewerSource(widget.modelUrl);
     final hasModel = modelSource != null && !_modelFailed;
     final fallbackPhoto = _fallbackPhoto;
@@ -92,17 +94,17 @@ class _Anatomical3DVolumetricViewerState
         ? AppTheme.emerald
         : hasPhotoFallback
             ? InclineColors.accentOrange
-            : Colors.white38;
+            : colorScheme.onSurfaceVariant;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1418),
+        color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF222C33)),
+        border: Border.all(color: colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.32),
+            color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.32 : 0.07),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -130,18 +132,18 @@ class _Anatomical3DVolumetricViewerState
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.2,
-                    color: Colors.white,
+                    color: colorScheme.onSurface,
                   ),
                 ),
               ),
               if (widget.scanDate != null) ...[
                 const SizedBox(width: 8),
                 Text(
-                  DateFormat('d MMM yyyy').format(widget.scanDate!),
+                  DateFormat('d MMM yyyy').format(widget.scanDate!.toLocal()),
                   style: GoogleFonts.inter(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white60,
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -156,8 +158,8 @@ class _Anatomical3DVolumetricViewerState
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const Positioned.fill(
-                    child: ColoredBox(color: Color(0xFF0B0F12)),
+                  Positioned.fill(
+                    child: ColoredBox(color: colorScheme.surface),
                   ),
                   Positioned.fill(
                     child: DecoratedBox(
@@ -207,10 +209,10 @@ class _Anatomical3DVolumetricViewerState
                         );
                       },
                       errorBuilder: (context, error, stackTrace) =>
-                          const _UnavailableScanPhoto(),
+                          _UnavailableScanPhoto(isDark: theme.brightness == Brightness.dark),
                     )
                   else
-                    _UnavailableBodyModel(modelFailed: _modelFailed),
+                    _UnavailableBodyModel(modelFailed: _modelFailed, isDark: theme.brightness == Brightness.dark),
                   if (hasModel && _isModelLoading)
                     Positioned(
                       left: 0,
@@ -218,7 +220,7 @@ class _Anatomical3DVolumetricViewerState
                       bottom: 0,
                       child: LinearProgressIndicator(
                         value: _modelProgress > 0 ? _modelProgress : null,
-                        backgroundColor: Colors.white12,
+                        backgroundColor: colorScheme.onSurface.withValues(alpha: 0.12),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           InclineColors.accentOrange,
                         ),
@@ -235,18 +237,20 @@ class _Anatomical3DVolumetricViewerState
 }
 
 class _UnavailableScanPhoto extends StatelessWidget {
-  const _UnavailableScanPhoto();
+  final bool isDark;
+
+  const _UnavailableScanPhoto({required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.broken_image_outlined, color: Colors.white38, size: 28),
+        Icon(Icons.broken_image_outlined, color: isDark ? Colors.white54 : Colors.black45, size: 28),
         const SizedBox(height: 6),
         Text(
           'Scan photo unavailable',
-          style: GoogleFonts.inter(fontSize: 11, color: Colors.white54),
+          style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white70 : Colors.black54),
         ),
       ],
     );
@@ -255,8 +259,9 @@ class _UnavailableScanPhoto extends StatelessWidget {
 
 class _UnavailableBodyModel extends StatelessWidget {
   final bool modelFailed;
+  final bool isDark;
 
-  const _UnavailableBodyModel({required this.modelFailed});
+  const _UnavailableBodyModel({required this.modelFailed, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +270,7 @@ class _UnavailableBodyModel extends StatelessWidget {
       children: [
         Icon(
           modelFailed ? Icons.error_outline_rounded : Icons.view_in_ar_outlined,
-          color: Colors.white38,
+          color: isDark ? Colors.white54 : Colors.black45,
           size: 32,
         ),
         const SizedBox(height: 8),
@@ -273,7 +278,7 @@ class _UnavailableBodyModel extends StatelessWidget {
           modelFailed
               ? '3D model unavailable for this scan'
               : 'No 3D model available for this scan',
-          style: GoogleFonts.inter(fontSize: 11, color: Colors.white54),
+          style: GoogleFonts.inter(fontSize: 11, color: isDark ? Colors.white70 : Colors.black54),
           textAlign: TextAlign.center,
         ),
       ],

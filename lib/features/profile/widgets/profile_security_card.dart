@@ -5,8 +5,7 @@ import '../../../core/services/watch_sync_service.dart';
 import '../../../core/services/biometric_auth_service.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// 2026 World-Class Health Telemetry, Privacy & Sign Out Bento Card
-/// Fully adaptive with InclineThemeX design tokens.
+/// Account controls with real connection status and theme-aware Incline surfaces.
 class ProfileSecurityCard extends StatelessWidget {
   final VoidCallback onOpenHealthPermissions;
   final VoidCallback onOpenPrivacyCharter;
@@ -29,7 +28,7 @@ class ProfileSecurityCard extends StatelessWidget {
         border: Border.all(color: context.borderCol, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
+            color: Colors.black.withValues(alpha: context.isDark ? 0.15 : 0.05),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),
@@ -43,23 +42,22 @@ class ProfileSecurityCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppTheme.emerald.withValues(alpha: 0.12),
+                  color: context.brandAccent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.security_rounded,
-                  color: AppTheme.emerald,
+                  color: context.brandAccent,
                   size: 16,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
-                'SECURITY & PRIVACY',
+                'Security & privacy',
                 style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2.0,
-                  color: context.textMuted,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: context.textPrimary,
                 ),
               ),
             ],
@@ -72,15 +70,23 @@ class ProfileSecurityCard extends StatelessWidget {
             builder: (ctx, _) {
               final watchSync = WatchSyncService.instance;
               final isConnected = watchSync.data.isConnected;
+              final hasSamples = watchSync.data.steps >= 0 ||
+                  watchSync.data.activeCalories >= 0 ||
+                  watchSync.data.workoutMinutes >= 0 ||
+                  watchSync.data.heartRate > 0 ||
+                  watchSync.data.heartRateVariabilityMs > 0 ||
+                  (watchSync.data.sleepHours > 0 && !watchSync.data.isManualSleep);
               return _buildActionRow(
                 context: context,
                 icon: Icons.watch_rounded,
                 iconColor: isConnected ? AppTheme.emerald : context.textMuted,
-                title: 'Health Telemetry Sync',
+                title: 'Health data',
                 subtitle: isConnected
-                    ? '${watchSync.watchBrand} paired & active'
-                    : 'No watch paired • Manual tracking',
-                badge: isConnected ? 'PAIRED' : 'UNLINKED',
+                    ? hasSamples
+                        ? '${watchSync.watchBrand} · latest records loaded'
+                        : '${watchSync.watchBrand} · access granted, waiting for records'
+                    : '${watchSync.watchBrand} · no recent samples',
+                badge: isConnected ? (hasSamples ? 'SYNCED' : 'ACCESS') : 'NO DATA',
                 onTap: onOpenHealthPermissions,
               );
             },
@@ -97,7 +103,7 @@ class ProfileSecurityCard extends StatelessWidget {
                 icon: Icons.fingerprint_rounded,
                 iconColor: enabled ? AppTheme.emerald : context.textMuted,
                 title: 'Biometric App Lock',
-                subtitle: enabled ? 'Active on app launch' : 'Disabled (Tap to enable Face ID / Fingerprint)',
+                subtitle: enabled ? 'Required when reopening Incline' : 'Use Face ID or fingerprint on this device',
                 badge: enabled ? 'ENABLED' : 'OFF',
                 onTap: () async {
                   HapticFeedback.mediumImpact();
@@ -119,9 +125,9 @@ class ProfileSecurityCard extends StatelessWidget {
             context: context,
             icon: Icons.shield_outlined,
             iconColor: InclineColors.accentOrange,
-            title: 'Data Privacy & Charter',
-            subtitle: 'AES-256 encrypted, data never sold',
-            badge: 'HIPAA/GDPR',
+            title: 'Privacy & club terms',
+            subtitle: 'Review member and health-data handling',
+            badge: 'POLICY',
             onTap: onOpenPrivacyCharter,
           ),
           Divider(color: context.borderCol, height: 20),
@@ -132,7 +138,7 @@ class ProfileSecurityCard extends StatelessWidget {
             icon: Icons.logout_rounded,
             iconColor: AppTheme.rose,
             title: 'Sign Out Session',
-            subtitle: 'Safely disconnect from this device',
+            subtitle: 'End your current member session',
             badge: 'EXIT',
             onTap: () {
               HapticFeedback.heavyImpact();
@@ -157,7 +163,7 @@ class ProfileSecurityCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
             Container(
@@ -184,7 +190,7 @@ class ProfileSecurityCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: GoogleFonts.outfit(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
                       color: context.textSecondary,
                     ),
@@ -193,7 +199,7 @@ class ProfileSecurityCard extends StatelessWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(6),
@@ -202,7 +208,7 @@ class ProfileSecurityCard extends StatelessWidget {
               child: Text(
                 badge,
                 style: GoogleFonts.outfit(
-                  fontSize: 8.5,
+                  fontSize: 9,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.6,
                   color: iconColor,

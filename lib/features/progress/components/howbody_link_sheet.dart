@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/models/models.dart';
-import '../../../../core/services/supabase_service.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../../core/utils/error_mapper.dart';
+import '../../../core/models/models.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_mapper.dart';
 import '../../home/components/inbody_scan_sheet.dart';
 
 /// Official HOWBODY Dual-Unit Height Converter Contract (PROJECT.md § Interface Contracts)
@@ -242,7 +242,7 @@ class _HowbodyLinkSheetState extends State<HowbodyLinkSheet>
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage = result.error ?? 'Failed to link scanner. Please scan again.';
+          _errorMessage = UserFriendlyErrorMapper.toGeneralErrorMessage(result.error, action: 'scanner pairing');
         });
       }
     } catch (e) {

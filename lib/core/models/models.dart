@@ -1326,27 +1326,34 @@ class WatchSyncData {
   final int activeCalories;
   final int goalCalories;
   final int heartRate;
+  final DateTime? heartRateRecordedAt;
+  final double heartRateVariabilityMs;
+  final DateTime? heartRateVariabilityRecordedAt;
   final double sleepHours;
   final double goalSleepHours;
-  final int sleepScore;
+  final bool isManualSleep;
   final int workoutMinutes;
   final int goalWorkoutMinutes;
-  final DateTime lastSyncTime;
+  final DateTime? lastSyncTime;
+  /// True when a native provider has granted access or returned health data.
   final bool isConnected;
   final bool hasSyncedToday;
 
   const WatchSyncData({
-    required this.steps,
+    this.steps = -1,
     this.goalSteps = 10000,
-    required this.activeCalories,
+    this.activeCalories = -1,
     this.goalCalories = 750,
-    required this.heartRate,
-    this.sleepHours = 0.0,
-    this.goalSleepHours = 8.0,
-    this.sleepScore = 0,
-    this.workoutMinutes = 0,
+    this.heartRate = -1,
+    this.heartRateRecordedAt,
+    this.heartRateVariabilityMs = -1,
+    this.heartRateVariabilityRecordedAt,
+    this.sleepHours = 0,
+    this.goalSleepHours = 8,
+    this.isManualSleep = false,
+    this.workoutMinutes = -1,
     this.goalWorkoutMinutes = 60,
-    required this.lastSyncTime,
+    this.lastSyncTime,
     this.isConnected = false,
     this.hasSyncedToday = false,
   });
@@ -1362,12 +1369,18 @@ class WatchSyncData {
     int? activeCalories,
     int? goalCalories,
     int? heartRate,
+    DateTime? heartRateRecordedAt,
+    bool clearHeartRateRecordedAt = false,
+    double? heartRateVariabilityMs,
+    DateTime? heartRateVariabilityRecordedAt,
+    bool clearHeartRateVariabilityRecordedAt = false,
     double? sleepHours,
     double? goalSleepHours,
-    int? sleepScore,
+    bool? isManualSleep,
     int? workoutMinutes,
     int? goalWorkoutMinutes,
     DateTime? lastSyncTime,
+    bool clearLastSyncTime = false,
     bool? isConnected,
     bool? hasSyncedToday,
   }) {
@@ -1377,12 +1390,19 @@ class WatchSyncData {
       activeCalories: activeCalories ?? this.activeCalories,
       goalCalories: goalCalories ?? this.goalCalories,
       heartRate: heartRate ?? this.heartRate,
+      heartRateRecordedAt: clearHeartRateRecordedAt
+          ? null
+          : (heartRateRecordedAt ?? this.heartRateRecordedAt),
+      heartRateVariabilityMs: heartRateVariabilityMs ?? this.heartRateVariabilityMs,
+      heartRateVariabilityRecordedAt: clearHeartRateVariabilityRecordedAt
+          ? null
+          : (heartRateVariabilityRecordedAt ?? this.heartRateVariabilityRecordedAt),
       sleepHours: sleepHours ?? this.sleepHours,
       goalSleepHours: goalSleepHours ?? this.goalSleepHours,
-      sleepScore: sleepScore ?? this.sleepScore,
+      isManualSleep: isManualSleep ?? this.isManualSleep,
       workoutMinutes: workoutMinutes ?? this.workoutMinutes,
       goalWorkoutMinutes: goalWorkoutMinutes ?? this.goalWorkoutMinutes,
-      lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      lastSyncTime: clearLastSyncTime ? null : (lastSyncTime ?? this.lastSyncTime),
       isConnected: isConnected ?? this.isConnected,
       hasSyncedToday: hasSyncedToday ?? this.hasSyncedToday,
     );

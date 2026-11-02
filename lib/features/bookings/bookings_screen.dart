@@ -5,6 +5,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../core/config/env_config.dart';
 import '../../core/models/models.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/error_mapper.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/bento_card.dart';
 import '../../core/widgets/dumbbell_loader.dart';
@@ -293,7 +294,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment verification failed: ${verifyResult.error}'),
+            content: Text(UserFriendlyErrorMapper.toGeneralErrorMessage(verifyResult.error, action: 'payment verification')),
             backgroundColor: InclineColors.thermalRed,
           ),
         );
@@ -381,7 +382,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to initialize pass invoice: ${purchaseRes['error'] ?? 'Unknown error'}'),
+            content: Text(UserFriendlyErrorMapper.toGeneralErrorMessage(purchaseRes['error'], action: 'pass purchase')),
             backgroundColor: InclineColors.thermalRed,
           ),
         );
@@ -403,10 +404,11 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
     if (paymentOrder == null || paymentOrder['gatewayOrderId'] == null) {
       final errorMsg = paymentOrder?['error']?.toString() ?? 'Backend did not produce a payment order';
+      debugPrint('[Bookings] Payment order request failed: $errorMsg');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment order initialization failed: $errorMsg'),
+            content: const Text('Could not start this payment. Please try again or contact Club Concierge.'),
             backgroundColor: InclineColors.thermalRed,
           ),
         );
@@ -609,7 +611,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                               SnackBar(
                                 backgroundColor: cardElevated,
                                 content: Text(
-                                  errMsg,
+                                  UserFriendlyErrorMapper.toGeneralErrorMessage(errMsg, action: 'class booking'),
                                   style: GoogleFonts.outfit(color: AppTheme.rose),
                                 ),
                               ),
@@ -817,7 +819,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                 SnackBar(
                                   backgroundColor: cardElevated,
                                   content: Text(
-                                    errMsg,
+                                    UserFriendlyErrorMapper.toGeneralErrorMessage(errMsg, action: 'recovery booking'),
                                     style: GoogleFonts.outfit(color: AppTheme.rose),
                                   ),
                                 ),
@@ -963,7 +965,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                             sm.showSnackBar(
                               SnackBar(
                                 backgroundColor: cardElevated,
-                                content: Text(err, style: GoogleFonts.outfit(color: AppTheme.rose)),
+                                content: Text(UserFriendlyErrorMapper.toGeneralErrorMessage(err, action: 'reservation cancellation'), style: GoogleFonts.outfit(color: AppTheme.rose)),
                               ),
                             );
                           }
