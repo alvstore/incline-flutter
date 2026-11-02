@@ -74,29 +74,29 @@ void main() {
     expect(find.text('Refer Friends & Earn'), findsOneWidget);
 
     // 6. Verify 2x2 Services Bento Grid
-    expect(find.text('MEMBER SERVICES & ACCOUNT'), findsOneWidget);
+    expect(find.text('Your club services'), findsOneWidget);
     expect(find.text('Invoices & Receipts'), findsOneWidget);
     expect(find.text('Turnstile Logs'), findsOneWidget);
     expect(find.text('Desk Requests'), findsOneWidget);
     expect(find.text('Club Feedback'), findsOneWidget);
 
-    // 7. Verify KYC Dossier tab switching and official dossier elements
-    await tester.tap(find.text('KYC Dossier'));
+    // 7. Verify Personal tab switching and registration details
+    await tester.tap(find.text('Personal'));
     await tester.pumpAndSettle();
-    expect(find.text('OFFICIAL KYC DOSSIER'), findsOneWidget);
+    expect(find.text('Member Registration Dossier'), findsOneWidget);
 
-    // 8. Verify Security & Club tab switching, Google Maps, Call Club Buttons, and Sign Out
-    await tester.tap(find.text('Security & Club'));
+    // 8. Verify Account tab switching, Google Maps, Call Club Buttons, and Sign Out
+    await tester.tap(find.text('Account'));
     await tester.pumpAndSettle();
     expect(find.text('Google Maps'), findsOneWidget);
     expect(find.text('Club Location'), findsOneWidget);
     expect(find.text('Call Club'), findsOneWidget);
     expect(find.text('Concierge Desk'), findsOneWidget);
-    expect(find.text('Sign Out Active Session'), findsOneWidget);
+    expect(find.text('Sign Out Session'), findsOneWidget);
 
-    // 9. Verify Trademark Registered Brand Footer with Tagline
+    // 9. Verify Brand Footer with Tagline
     expect(find.text('RISE • REFLECT • REPEAT'), findsWidgets);
-    expect(find.textContaining('TRADE MARK REGISTERED'), findsOneWidget);
+    expect(find.textContaining('INCLINE', findRichText: true), findsWidgets);
 
     // 10. Strict Invariant: Absolutely ZERO occurrences of "sanctuary", "Sanctuary", "VIP", "Sanctum"
     expect(find.textContaining('sanctuary', findRichText: true), findsNothing);

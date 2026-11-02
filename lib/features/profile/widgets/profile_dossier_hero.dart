@@ -48,10 +48,10 @@ class ProfileDossierHero extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Member photo with a clear, branded change affordance.
+          // 1. Biometric Security Identity Photo (Locked to Front-Desk Verification)
           Semantics(
             button: onAvatarTap != null,
-            label: 'Change profile photo',
+            label: 'Biometric Security Photo',
             child: InkWell(
               onTap: onAvatarTap,
               customBorder: const CircleBorder(),
@@ -90,13 +90,20 @@ class ProfileDossierHero extends StatelessWidget {
                     bottom: 0,
                     right: 0,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(3.5),
                       decoration: BoxDecoration(
-                        color: context.brandAccent,
+                        color: AppTheme.emerald,
                         shape: BoxShape.circle,
                         border: Border.all(color: context.cardBg, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.emerald.withValues(alpha: 0.35),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: const Icon(Icons.camera_alt_rounded, size: 11, color: Colors.white),
+                      child: const Icon(Icons.verified_user_rounded, size: 11, color: Colors.black),
                     ),
                   ),
                 ],

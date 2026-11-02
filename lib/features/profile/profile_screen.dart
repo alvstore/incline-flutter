@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/models/models.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/services/supabase_service.dart';
-import '../../core/services/media_picker_service.dart';
 import '../../core/services/native_health_bridge.dart';
 import '../../core/services/watch_sync_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -455,25 +454,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. Executive Member Dossier Hero (Avatar with Camera Picker, Name, Passcode)
+                // 1. Executive Member Dossier Hero (Biometric Access ID, Name, Passcode)
                 ProfileDossierHero(
                   member: member,
-                  onAvatarTap: () async {
-                    final sm = ScaffoldMessenger.of(context);
-                    final elevatedBg = context.cardElevated;
-                    final file = await MediaPickerService.instance.pickAvatarImage(context);
-                    if (file != null && mounted) {
-                      sm.showSnackBar(
-                        SnackBar(
-                          backgroundColor: elevatedBg,
-                          content: Text(
-                            'Avatar updated! Selected: ${file.name}',
-                            style: GoogleFonts.outfit(color: AppTheme.emerald, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      );
-                    }
-                  },
+                  onAvatarTap: () => _showBiometricPhotoSecuritySheet(context),
                 ),
                 const SizedBox(height: 16),
 
@@ -754,6 +738,111 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Informs members of club physical security policy regarding biometric turnstile photos.
+  void _showBiometricPhotoSecuritySheet(BuildContext context) {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: context.cardElevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: context.textMuted.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppTheme.emerald.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.3), width: 1.5),
+                ),
+                child: const Icon(Icons.verified_user_rounded, color: AppTheme.emerald, size: 26),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Biometric Turnstile Identity',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: context.textPrimary,
+                  letterSpacing: -0.2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Your profile photo is synchronized with Incline\'s optical turnstiles and MIPS biometric access gates. To maintain facility safety and prevent pass sharing, member photos cannot be altered from mobile devices.',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: context.textMuted,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: context.cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: context.borderCol, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded, size: 18, color: AppTheme.emerald),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'To update your facial ID photo, please speak with the front desk concierge during your next visit.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.emerald,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Understood',
+                    style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

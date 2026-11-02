@@ -337,9 +337,9 @@ class _AppPermissionsScreenState extends State<AppPermissionsScreen> {
               _buildPermissionCard(
                 icon: Icons.camera_alt_rounded,
                 iconColor: InclineColors.thermalAmber,
-                badge: 'DIAGNOSTICS & IDENTITY',
+                badge: 'DIAGNOSTICS & TELEMETRY',
                 title: 'Camera & Body Scans',
-                description: 'Required for HowBody 3D posture report imports and member security avatar photos.',
+                description: 'Required for HowBody 3D posture report imports and optical scanner diagnostics.',
                 value: _cameraEnabled,
                 onChanged: (val) => setState(() => _cameraEnabled = val),
               ),
