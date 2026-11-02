@@ -450,7 +450,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           backgroundColor: context.cardElevated,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 130),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -459,11 +459,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   member: member,
                   onAvatarTap: () => _showBiometricPhotoSecuritySheet(context),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
                 // 2. Luxury Segmented Navigation Bar
                 _buildSegmentedTabBar(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
 
                 // Tab transitions stay subtle and respect the system's reduced-motion setting.
                 if (disableAnimations)
@@ -581,7 +581,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             // 1. Animated Plan Bento (Days Left & Date of Joining)
             ProfilePlanBento(membership: _membership),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // 2. 2x2 Member Services Grid (Invoices, Attendance, Requests, Feedback)
             ProfileServicesBentoGrid(
@@ -632,7 +632,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               member: member,
               rewardsEnabled: _referralSettings?.isEnabled ?? false,
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
             // Trademark Registered Brand Footer
             _buildBrandFooter(context),
@@ -654,7 +654,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 });
               },
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
             // Trademark Registered Brand Footer
             _buildBrandFooter(context),
@@ -672,13 +672,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onOpenPrivacyCharter: _showPrivacyPolicySheet,
               onSignOut: _confirmSignOut,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // 2. Concierge & Club Location Bar
             ProfileContactBar(branch: _branch),
-            const SizedBox(height: 16),
-
-            const SizedBox(height: 12),
+            const SizedBox(height: 24),
 
             // Trademark Registered Brand Footer
             _buildBrandFooter(context),
