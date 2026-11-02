@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/models/models.dart';
+import '../../core/services/watch_sync_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'animated_exercise_visualizer.dart';
 import 'detailed_exercise_sheet.dart';

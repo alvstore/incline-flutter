@@ -137,7 +137,7 @@ class WatchSyncService extends ChangeNotifier with WidgetsBindingObserver {
       var hrv = isSameDay ? (prefs.getDouble(_prefHrv) ?? -1.0) : -1.0;
       DateTime? hrvAt = DateTime.tryParse(prefs.getString(_prefHrvAt) ?? '');
       if (hrvAt == null || now.difference(hrvAt) > const Duration(hours: 24) || hrv <= 0) {
-        hrv = -1;
+        hrv = -1.0;
         hrvAt = null;
       }
       final lastSync = isSameDay
