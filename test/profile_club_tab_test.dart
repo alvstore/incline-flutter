@@ -75,8 +75,8 @@ void main() {
 
     // 6. Verify 2x2 Services Bento Grid
     expect(find.text('Your club services'), findsOneWidget);
-    expect(find.text('Invoices & Receipts'), findsOneWidget);
-    expect(find.text('Turnstile Logs'), findsOneWidget);
+    expect(find.text('Invoices'), findsOneWidget);
+    expect(find.text('Attendance'), findsOneWidget);
     expect(find.text('Desk Requests'), findsOneWidget);
     expect(find.text('Club Feedback'), findsOneWidget);
 

@@ -692,28 +692,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         fit: BoxFit.scaleDown,
         child: Column(
           children: [
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'INCLINE',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.8,
-                      color: context.textPrimary,
-                    ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'INCLINE',
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2.8,
+                    color: context.textPrimary,
                   ),
-                  TextSpan(
-                    text: ' ®',
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 3, top: 1),
+                  child: Text(
+                    '®',
                     style: GoogleFonts.outfit(
-                      fontSize: 10,
+                      fontSize: 8.5,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.emerald,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
             const SizedBox(height: 5),
             Text(

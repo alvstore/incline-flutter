@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// Member service shortcuts in a compact, theme-aware grid.
+/// Member service shortcuts rendered as clean, high-density icon action cards
+/// that match the Quick Actions and Contact Bar language, saving vertical space
+/// and delivering a cohesive, responsive 2x2 layout.
 class ProfileServicesBentoGrid extends StatelessWidget {
   final VoidCallback onOpenInvoices;
   final VoidCallback onOpenAttendance;
@@ -51,16 +53,16 @@ class ProfileServicesBentoGrid extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
-        // Row 1: Invoices & Turnstile Attendance
+        // Row 1: Invoices & Receipts + Attendance
         Row(
           children: [
             Expanded(
-              child: _buildBentoTile(
+              child: _buildServiceActionCard(
                 context: context,
-                title: 'Invoices & Receipts',
-                subtitle: 'Past invoices & receipts',
+                title: 'Invoices',
+                subtitle: 'Past payments',
                 icon: Icons.receipt_long_rounded,
                 iconColor: AppTheme.emerald,
                 onTap: onOpenInvoices,
@@ -68,10 +70,10 @@ class ProfileServicesBentoGrid extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildBentoTile(
+              child: _buildServiceActionCard(
                 context: context,
-                title: 'Turnstile Logs',
-                subtitle: 'Optical check-ins & streak',
+                title: 'Attendance',
+                subtitle: 'Optical check-ins',
                 icon: Icons.history_rounded,
                 iconColor: InclineColors.accentOrange,
                 onTap: onOpenAttendance,
@@ -79,16 +81,16 @@ class ProfileServicesBentoGrid extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // Row 2: Service Requests & Member Feedback
+        // Row 2: Desk Requests + Club Feedback
         Row(
           children: [
             Expanded(
-              child: _buildBentoTile(
+              child: _buildServiceActionCard(
                 context: context,
                 title: 'Desk Requests',
-                subtitle: 'Inquiries, freeze, lockers',
+                subtitle: 'Inquiries & lockers',
                 icon: Icons.assignment_outlined,
                 iconColor: InclineColors.thermalAmber,
                 onTap: onOpenRequests,
@@ -96,10 +98,10 @@ class ProfileServicesBentoGrid extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildBentoTile(
+              child: _buildServiceActionCard(
                 context: context,
                 title: 'Club Feedback',
-                subtitle: 'Rate amenities & coaches',
+                subtitle: 'Rate amenities',
                 icon: Icons.star_outline_rounded,
                 iconColor: InclineColors.accentOrange,
                 onTap: onOpenFeedback,
@@ -111,7 +113,7 @@ class ProfileServicesBentoGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildBentoTile({
+  Widget _buildServiceActionCard({
     required BuildContext context,
     required String title,
     required String subtitle,
@@ -132,7 +134,6 @@ class ProfileServicesBentoGrid extends StatelessWidget {
           },
           borderRadius: BorderRadius.circular(18),
           child: Ink(
-            height: 132,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: context.cardBg,
@@ -146,49 +147,55 @@ class ProfileServicesBentoGrid extends StatelessWidget {
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: iconColor.withValues(alpha: 0.13),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(icon, color: iconColor, size: 18),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: iconColor.withValues(alpha: 0.22),
+                      width: 1,
                     ),
-                    Icon(Icons.arrow_forward_rounded, color: context.textMuted, size: 18),
-                  ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    icon,
+                    color: iconColor,
+                    size: 20,
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: context.textPrimary,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w400,
-                        color: context.textSecondary,
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: context.textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
