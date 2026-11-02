@@ -213,14 +213,6 @@ class _ExerciseVideoCardState extends State<ExerciseVideoCard> {
     });
   }
 
-  void _toggleSpeed() {
-    if (_controller == null || !_isInitialized) return;
-    HapticFeedback.selectionClick();
-    final nextSpeed = _playbackSpeed == 0.75 ? 1.0 : 0.75;
-    _controller!.setPlaybackSpeed(nextSpeed);
-    setState(() => _playbackSpeed = nextSpeed);
-  }
-
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
@@ -285,45 +277,7 @@ class _ExerciseVideoCardState extends State<ExerciseVideoCard> {
                   ),
                 ),
 
-              // 3. Top-Right Badge: Slow-Mo Speed Toggle Pill
-              Positioned(
-                top: 10,
-                right: 10,
-                child: GestureDetector(
-                  onTap: (!_isWebpOrImage && _isInitialized) ? _toggleSpeed : null,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: context.brandAccent.withValues(alpha: 0.5),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.slow_motion_video_rounded, size: 12, color: context.brandAccent),
-                        const SizedBox(width: 4),
-                        Text(
-                          _isWebpOrImage
-                              ? '0.75× SLOW-MO'
-                              : (_playbackSpeed == 0.75 ? '0.75× SLOW-MO' : '1.0× SPEED'),
-                          style: GoogleFonts.outfit(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.6,
-                            color: context.brandAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // 4. Bottom-Left Title & Tag Pill (Semi-Transparent so machine animation shows through)
+              // 4. Bottom-Left Title (Keeping exercise name cleanly without 0.75x suffix)
               Positioned(
                 bottom: 10,
                 left: 10,
@@ -342,7 +296,7 @@ class _ExerciseVideoCardState extends State<ExerciseVideoCard> {
                           ),
                         ),
                         child: Text(
-                          '${widget.title ?? 'Form video'} · 0.75×',
+                          widget.title ?? 'Form video',
                           style: GoogleFonts.outfit(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,

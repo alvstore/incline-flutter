@@ -709,45 +709,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
         fit: BoxFit.scaleDown,
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: AssetImage('assets/incline_logo.png'),
-                      fit: BoxFit.contain,
+            RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'INCLINE',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.8,
+                      color: context.textPrimary,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'INCLINE',
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2.8,
-                          color: context.textPrimary,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' ®',
-                        style: GoogleFonts.outfit(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.emerald,
-                        ),
-                      ),
-                    ],
+                  TextSpan(
+                    text: ' ®',
+                    style: GoogleFonts.outfit(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.emerald,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 5),
             Text(
