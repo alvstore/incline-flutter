@@ -69,7 +69,7 @@
         </activity>
         <receiver
             android:name=".InclineNotificationReceiver"
-            android:exported="true">
+            android:exported="false">
             <intent-filter>
                 <action android:name="com.incline.incline_app.SEND_TEST_NOTIFICATION" />
             </intent-filter>

@@ -481,106 +481,102 @@ class _DailyQuoteCardState extends State<DailyQuoteCard>
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Thermal vermilion accent spine
-                  Container(
-                    width: 3.5,
+            child: Container(
+              decoration: const BoxDecoration(
+                border: Border(
+                  left: BorderSide(
                     color: InclineColors.accentOrange,
+                    width: 3.5,
                   ),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                        vertical: verticalPadding,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Header: Animated Quote icon + Tag + Date
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: verticalPadding,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header: Animated Quote icon + Tag + Date
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Flexible(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    ScaleTransition(
-                                      scale: _iconScaleAnimation,
-                                      child: Icon(
-                                        Icons.format_quote_rounded,
-                                        size: isWide ? 16 : 14,
-                                        color: InclineColors.accentOrange,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Flexible(
-                                      child: Text(
-                                        quoteItem.category,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: tagFontSize,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 1.1,
-                                          color: InclineColors.accentOrange,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                              ScaleTransition(
+                                scale: _iconScaleAnimation,
+                                child: Icon(
+                                  Icons.format_quote_rounded,
+                                  size: isWide ? 16 : 14,
+                                  color: InclineColors.accentOrange,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                DailyQuoteCard._formatDateTag(now),
-                                style: GoogleFonts.inter(
-                                  fontSize: tagFontSize,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
-                                  color: isDark
-                                      ? InclineColors.textMuted
-                                      : InclineColors.lightTextMuted,
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  quoteItem.category,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: tagFontSize,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.1,
+                                    color: InclineColors.accentOrange,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-
-                          SizedBox(height: isWide ? 9 : 7),
-
-                          // Quote Body
-                          Text(
-                            '“${quoteItem.text}”',
-                            style: GoogleFonts.outfit(
-                              fontSize: quoteFontSize,
-                              fontWeight: FontWeight.w500,
-                              fontStyle: FontStyle.italic,
-                              height: 1.38,
-                              color: isDark
-                                  ? InclineColors.textPrimary
-                                  : InclineColors.lightTextPrimary,
-                            ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          DailyQuoteCard._formatDateTag(now),
+                          style: GoogleFonts.inter(
+                            fontSize: tagFontSize,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                            color: isDark
+                                ? InclineColors.textMuted
+                                : InclineColors.lightTextMuted,
                           ),
+                        ),
+                      ],
+                    ),
 
-                          SizedBox(height: isWide ? 7 : 5),
+                    SizedBox(height: isWide ? 9 : 7),
 
-                          // Attribution
-                          Text(
-                            '— ${quoteItem.author}',
-                            style: GoogleFonts.inter(
-                              fontSize: authorFontSize,
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? InclineColors.textSecondary
-                                  : InclineColors.lightTextSecondary,
-                            ),
-                          ),
-                        ],
+                    // Quote Body
+                    Text(
+                      '“${quoteItem.text}”',
+                      style: GoogleFonts.outfit(
+                        fontSize: quoteFontSize,
+                        fontWeight: FontWeight.w500,
+                        fontStyle: FontStyle.italic,
+                        height: 1.38,
+                        color: isDark
+                            ? InclineColors.textPrimary
+                            : InclineColors.lightTextPrimary,
                       ),
                     ),
-                  ),
-                ],
+
+                    SizedBox(height: isWide ? 7 : 5),
+
+                    // Attribution
+                    Text(
+                      '— ${quoteItem.author}',
+                      style: GoogleFonts.inter(
+                        fontSize: authorFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? InclineColors.textSecondary
+                            : InclineColors.lightTextSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

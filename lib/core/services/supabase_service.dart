@@ -3688,15 +3688,16 @@ class SupabaseService {
 
       final list = res as List;
       return list.map((n) {
+        final actionUrl = (n['action_url'] as String?) ?? (n['link'] as String?);
         return GymNotification(
           id: n['id'] as String? ?? 'notif_${DateTime.now().millisecondsSinceEpoch}',
           title: n['title'] as String? ?? 'Club Bulletin',
           message: n['message'] as String? ?? '',
           timestamp: DateTime.tryParse(n['created_at']?.toString() ?? '') ?? DateTime.now(),
-          type: n['type'] as String? ?? 'announcement',
+          type: n['type'] as String? ?? (n['category'] as String?) ?? 'announcement',
           isRead: n['is_read'] as bool? ?? false,
           badge: n['badge'] as String? ?? (n['category'] as String?)?.toUpperCase(),
-          actionLabel: n['action_url'] != null ? 'View Details' : null,
+          actionLabel: actionUrl != null ? 'View Details' : null,
         );
       }).toList();
     } catch (e) {
@@ -3932,6 +3933,7 @@ class SupabaseService {
       isVisitedToday: isVisitedToday,
       todayCheckIn: todayRecord?.checkInTime,
       habitualTime: habitualTimeStr,
+      habitualHour: habitualHour,
       motivationTitle: motivationTitle,
       motivationMessage: motivationMessage,
       motivationUrgency: motivationUrgency,

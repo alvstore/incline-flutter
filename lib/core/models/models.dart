@@ -1443,6 +1443,7 @@ class MemberAttendanceAnalysis {
   final bool isVisitedToday;
   final DateTime? todayCheckIn;
   final String habitualTime;
+  final int habitualHour;
   final String motivationTitle;
   final String motivationMessage;
   final String motivationUrgency; // 'gentle', 'habitual', 'urgent_evening', 'completed'
@@ -1456,6 +1457,7 @@ class MemberAttendanceAnalysis {
     required this.isVisitedToday,
     this.todayCheckIn,
     required this.habitualTime,
+    this.habitualHour = 18,
     required this.motivationTitle,
     required this.motivationMessage,
     required this.motivationUrgency,
@@ -1529,8 +1531,8 @@ class GymClass {
     String categoryDisplay = 'Studio';
     if (cat.contains('pilates') || name.toLowerCase().contains('pilates')) {
       categoryDisplay = 'Reformer Pilates';
-    } else if (cat.contains('yoga') || name.toLowerCase().contains('yoga')) {
-      categoryDisplay = 'Yoga & Mind';
+    } else if (cat.contains('yoga') || name.toLowerCase().contains('yoga') || cat.contains('mobility') || name.toLowerCase().contains('mobility') || cat.contains('mind')) {
+      categoryDisplay = 'Yoga & Mobility';
     } else if (cat.contains('zumba') || name.toLowerCase().contains('zumba')) {
       categoryDisplay = 'Zumba';
     } else if (cat.contains('aerobic') || name.toLowerCase().contains('aerobic')) {

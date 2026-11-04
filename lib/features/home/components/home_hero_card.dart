@@ -228,6 +228,19 @@ class _HomeHeroCardState extends State<HomeHeroCard>
     super.dispose();
   }
 
+  String _getTimeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return 'Good morning';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Good afternoon';
+    } else if (hour >= 17 && hour < 21) {
+      return 'Good evening';
+    } else {
+      return 'Good evening';
+    }
+  }
+
   String _getInitials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
     if (parts.isEmpty || parts[0].isEmpty) return 'M';
@@ -400,21 +413,23 @@ class _HomeHeroCardState extends State<HomeHeroCard>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Welcome back',
+                                        _getTimeGreeting(),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.inter(
                                           fontSize: 12,
-                                          fontWeight: FontWeight.w400,
+                                          fontWeight: FontWeight.w500,
                                           color: isDark
                                               ? Colors.white
-                                                  .withValues(alpha: 0.7)
+                                                  .withValues(alpha: 0.72)
                                               : InclineColors.lightTextSecondary,
                                         ),
                                       ),
-                                      const SizedBox(height: 1),
+                                      const SizedBox(height: 1.5),
                                       Text(
-                                        widget.memberName.split(' ').first,
+                                        widget.memberName.trim().isNotEmpty
+                                            ? widget.memberName.split(' ').first
+                                            : 'Athlete',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.outfit(

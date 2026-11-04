@@ -2469,6 +2469,20 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
+  /// Normalizes category labels so backend variations (e.g. 'Yoga', 'Yoga & Mind', 'Mobility')
+  /// seamlessly merge into standardized user-friendly category filters.
+  String _normalizeCategoryLabel(String raw) {
+    final lower = raw.trim().toLowerCase();
+    if (lower.contains('pilates')) return 'Reformer Pilates';
+    if (lower.contains('yoga') || lower.contains('mobility') || lower.contains('mind')) return 'Yoga & Mobility';
+    if (lower.contains('zumba')) return 'Zumba';
+    if (lower.contains('aerobic')) return 'Aerobics';
+    if (lower.contains('spin') || lower.contains('cycle')) return 'Power Spin';
+    if (lower.contains('hiit') || lower.contains('functional')) return 'Functional HIIT';
+    if (lower.contains('dance')) return 'Dance Fitness';
+    return raw.trim();
+  }
+
   /// Dynamically computes active class categories from Supabase class_types and loaded classes
   List<Map<String, dynamic>> _getDynamicClassCategories() {
     final categories = <Map<String, dynamic>>[
@@ -2479,37 +2493,35 @@ class _BookingsScreenState extends State<BookingsScreen> {
       },
     ];
 
-    final seenLabels = <String>{};
+    final seenKeys = <String>{};
 
-    // 1. Add categories configured in Supabase class_types
+    void addCategory(String rawLabel) {
+      if (rawLabel.trim().isEmpty) return;
+      final normalized = _normalizeCategoryLabel(rawLabel);
+      final key = normalized.toLowerCase();
+      if (!seenKeys.contains(key)) {
+        seenKeys.add(key);
+        categories.add({
+          'id': key,
+          'label': normalized,
+          'icon': _resolveCategoryIcon(normalized),
+        });
+      }
+    }
+
+    // 1. Add categories configured dynamically in Supabase class_types
     for (final ct in _branchClassTypes) {
       final name = (ct['name'] as String? ?? '').trim();
       final cat = (ct['category'] as String? ?? '').trim();
-      final label = name.isNotEmpty ? name : cat;
-      if (label.isNotEmpty && !seenLabels.contains(label.toLowerCase())) {
-        seenLabels.add(label.toLowerCase());
-        categories.add({
-          'id': label.toLowerCase(),
-          'label': label,
-          'icon': _resolveCategoryIcon(label),
-        });
-      }
+      addCategory(name.isNotEmpty ? name : cat);
     }
 
-    // 2. Add any additional categories present in today's active classes
+    // 2. Add any additional categories present in loaded backend classes
     for (final c in _classes) {
-      final label = c.category.trim();
-      if (label.isNotEmpty && !seenLabels.contains(label.toLowerCase())) {
-        seenLabels.add(label.toLowerCase());
-        categories.add({
-          'id': label.toLowerCase(),
-          'label': label,
-          'icon': _resolveCategoryIcon(label),
-        });
-      }
+      addCategory(c.category);
     }
 
-    // 3. Fallback defaults if no backend classes or class_types exist yet
+    // 3. Fallback defaults if no backend classes or class_types are scheduled
     if (categories.length == 1) {
       return [
         {
@@ -2518,12 +2530,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
           'icon': Icons.grid_view_rounded,
         },
         {
-          'id': 'pilates',
+          'id': 'reformer pilates',
           'label': 'Reformer Pilates',
           'icon': Icons.self_improvement_rounded,
         },
         {
-          'id': 'yoga',
+          'id': 'yoga & mobility',
           'label': 'Yoga & Mobility',
           'icon': Icons.spa_rounded,
         },

@@ -1,4 +1,6 @@
+import '../models/models.dart';
 import '../theme/incline_colors.dart';
+import '../utils/ist_date_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -246,6 +248,42 @@ class PushNotificationService {
   }) async {
     final reminderTime = slotTime.subtract(const Duration(minutes: 30));
     debugPrint('[INCLINE] Scheduled suite reminder for "$suiteName" at $reminderTime');
+  }
+
+  /// Evaluates whether the member has passed their habitual visit time today without
+  /// an optical turnstile check-in, and dispatches a streak-defense motivational alert.
+  Future<void> checkAndDispatchMissedGymAlert(MemberAttendanceAnalysis analysis) async {
+    if (analysis.isVisitedToday) return;
+
+    final enabled = await isStreakAlertsEnabled();
+    if (!enabled) return;
+
+    final nowIST = ISTDateUtils.toIST(DateTime.now());
+    final currentHour = nowIST.hour;
+
+    // Dispatches once per day when current time reaches or exceeds their habitual time
+    // between habitualHour and 22:00 (club closing hours)
+    final prefs = await SharedPreferences.getInstance();
+    final todayKey = 'incline_missed_gym_notified_${nowIST.year}_${nowIST.month}_${nowIST.day}';
+    if (prefs.getBool(todayKey) == true) return;
+
+    if (currentHour >= analysis.habitualHour && currentHour < 22) {
+      final streak = analysis.streakDays;
+      final title = streak > 0
+          ? 'Streak Defense • $streak-Day Streak at Risk! 🔥'
+          : 'Rise & Reflect • Incline Routine';
+      final body = streak > 0
+          ? 'You usually train around ${analysis.habitualTime}. Protect your $streak-day streak today — club doors are open!'
+          : 'You usually visit around ${analysis.habitualTime}. Take 45 minutes for yourself today — workout floors and contrast suites are ready.';
+
+      await showLocalAlert(
+        title: title,
+        body: body,
+        payloadRoute: '/workout',
+      );
+      await prefs.setBool(todayKey, true);
+      debugPrint('[INCLINE] Dispatched missed-gym motivational prompt for habitual time ${analysis.habitualTime}');
+    }
   }
 
   /// Dispatches immediate local alert for confirmed booking, motivational cue, or reminder

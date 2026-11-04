@@ -249,8 +249,17 @@ class _WelcomeLoginScreenState extends State<WelcomeLoginScreen>
     } catch (e) {
       debugPrint('[INCLINE] WhatsApp signInWithOtp exception: $e');
       if (mounted) {
-        // Since SMS/RCS is disabled in the backend, any provider notice or rate error
-        // still routes to OTP step for registered numbers
+        final errString = e.toString().toLowerCase();
+        if (errString.contains('rate limit') || errString.contains('429') || errString.contains('too many requests')) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Too many verification attempts. Please wait 60 seconds before retrying.';
+          });
+          return;
+        }
+
+        // Since SMS/RCS is disabled in the backend, provider notices or warnings
+        // still route to OTP step for registered numbers
         _startResendTimer();
         setState(() {
           _otpStep = _OtpStep.otpVerification;

@@ -19,7 +19,6 @@ import 'core/services/deep_link_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
-import 'features/onboarding/incline_welcome_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,7 +84,6 @@ class _InclineAppRoot extends ConsumerStatefulWidget {
 
 class _InclineAppRootState extends ConsumerState<_InclineAppRoot> {
   bool _isLoading = true;
-  bool _splashFinished = false;
   GoRouter? _router;
 
   @override
@@ -187,21 +185,21 @@ class _InclineAppRootState extends ConsumerState<_InclineAppRoot> {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeProvider);
 
-    if (_isLoading || !_splashFinished || _router == null) {
+    if (_isLoading || _router == null) {
       return MaterialApp(
         title: '${EnvConfig.appName} • ${EnvConfig.tagline}',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: themeMode,
-        home: InclineWelcomeScreen(
-          onContinue: () {
-            if (mounted) {
-              setState(() {
-                _splashFinished = true;
-              });
-            }
-          },
+        home: const Scaffold(
+          backgroundColor: InclineColors.bgPrimary,
+          body: Center(
+            child: CircularProgressIndicator(
+              color: InclineColors.accentOrange,
+              strokeWidth: 2.5,
+            ),
+          ),
         ),
       );
     }

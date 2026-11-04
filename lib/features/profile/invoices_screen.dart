@@ -96,6 +96,62 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         .fold(0.0, (acc, inv) => acc + inv.amountPaid);
   }
 
+  Color _resolveStatusColor(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'paid':
+      case 'completed':
+      case 'success':
+        return AppTheme.emerald; // Pure Emerald Green (#10B981)
+      case 'pending':
+      case 'unpaid':
+      case 'due':
+      case 'processing':
+      case 'in_progress':
+        return AppTheme.amber; // Distinct Amber / Warning (#F59E0B)
+      case 'failed':
+      case 'cancelled':
+      case 'void':
+      case 'declined':
+      case 'rejected':
+        return AppTheme.rose; // Sharp Red (#EF4444)
+      case 'partially_paid':
+      case 'partial':
+        return AppTheme.cyan; // Distinct Cyan (#06B6D4)
+      case 'refunded':
+        return const Color(0xFFA855F7); // Purple
+      default:
+        return AppTheme.amber;
+    }
+  }
+
+  IconData _resolveStatusIcon(String status) {
+    switch (status.toLowerCase().trim()) {
+      case 'paid':
+      case 'completed':
+      case 'success':
+        return Icons.check_circle_rounded;
+      case 'pending':
+      case 'unpaid':
+      case 'due':
+      case 'processing':
+      case 'in_progress':
+        return Icons.hourglass_top_rounded;
+      case 'failed':
+      case 'cancelled':
+      case 'void':
+      case 'declined':
+      case 'rejected':
+        return Icons.cancel_rounded;
+      case 'partially_paid':
+      case 'partial':
+        return Icons.pie_chart_outline_rounded;
+      case 'refunded':
+        return Icons.replay_rounded;
+      default:
+        return Icons.info_outline_rounded;
+    }
+  }
+
   void _showTaxInvoiceDialog(MemberInvoice inv) {
     showDialog(
       context: context,
@@ -125,20 +181,35 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 ),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: (inv.status.toLowerCase() == 'cancelled' ? AppTheme.rose : AppTheme.emerald).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                inv.status.toUpperCase(),
-                style: GoogleFonts.outfit(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: inv.status.toLowerCase() == 'cancelled' ? AppTheme.rose : AppTheme.emerald,
-                ),
-              ),
+            Builder(
+              builder: (context) {
+                final stColor = _resolveStatusColor(inv.status);
+                final stIcon = _resolveStatusIcon(inv.status);
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: stColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: stColor.withValues(alpha: 0.4), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(stIcon, size: 12, color: stColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        inv.status.toUpperCase(),
+                        style: GoogleFonts.outfit(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: stColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -872,8 +943,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
   Widget _buildInvoiceCard(MemberInvoice inv) {
     final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(inv.createdAt);
-    final isCancelled = inv.status.toLowerCase() == 'cancelled';
-    final statusColor = isCancelled ? AppTheme.rose : AppTheme.emerald;
+    final statusColor = _resolveStatusColor(inv.status);
+    final statusIcon = _resolveStatusIcon(inv.status);
+    final isCancelled = inv.status.toLowerCase() == 'cancelled' || inv.status.toLowerCase() == 'failed';
 
     IconData typeIcon = Icons.receipt_long_rounded;
     Color typeColor = context.brandAccent;
@@ -935,14 +1007,23 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.4), width: 1),
                   ),
-                  child: Text(
-                    inv.status.toUpperCase(),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: statusColor,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 12, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        inv.status.toUpperCase(),
+                        style: GoogleFonts.outfit(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -950,7 +1031,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
             const SizedBox(height: 12),
 
-            // Item description
+            // Item description (confidential internal notes removed for members)
             if (inv.items.isNotEmpty)
               Text(
                 inv.items.first.description,
@@ -960,9 +1041,11 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   color: context.textPrimary,
                 ),
               )
-            else if (inv.notes != null && inv.notes!.isNotEmpty)
+            else
               Text(
-                inv.notes!,
+                inv.invoiceType == 'addon'
+                    ? 'Recovery & Wellness Suite'
+                    : (inv.invoiceType == 'store' ? 'Incline Fuel & Merch' : 'Incline Club Membership'),
                 style: GoogleFonts.outfit(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -1039,6 +1122,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
   Widget _buildPaymentHistoryCard(MemberPayment p) {
     final dateStr = DateFormat('dd MMM yyyy').format(p.paymentDate);
+    final statusColor = _resolveStatusColor(p.status);
+    final statusIcon = _resolveStatusIcon(p.status);
+    final isPending = p.status.toLowerCase().contains('pend') || p.status.toLowerCase().contains('unpaid');
+    final isFailed = p.status.toLowerCase().contains('fail') || p.status.toLowerCase().contains('declined');
+    final paymentStatusLabel = isPending
+        ? 'Pending since $dateStr'
+        : (isFailed ? 'Attempted on $dateStr' : 'Paid on $dateStr');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1056,10 +1146,10 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.emerald.withValues(alpha: 0.15),
+                        color: statusColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.check_circle_rounded, color: AppTheme.emerald, size: 18),
+                      child: Icon(statusIcon, color: statusColor, size: 18),
                     ),
                     const SizedBox(width: 10),
                     Column(
@@ -1074,7 +1164,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                           ),
                         ),
                         Text(
-                          'Paid on $dateStr',
+                          paymentStatusLabel,
                           style: GoogleFonts.outfit(fontSize: 11, color: context.textMuted),
                         ),
                       ],
@@ -1084,17 +1174,25 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppTheme.emerald.withValues(alpha: 0.15),
+                    color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.4), width: 1),
                   ),
-                  child: Text(
-                    'COMPLETED',
-                    style: GoogleFonts.outfit(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.8,
-                      color: AppTheme.emerald,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(statusIcon, size: 11, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        p.status.toUpperCase(),
+                        style: GoogleFonts.outfit(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1141,22 +1239,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                       ),
                     ],
                   ),
-                  if (p.notes != null && p.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Note:', style: GoogleFonts.outfit(fontSize: 11.5, color: context.textMuted)),
-                        Flexible(
-                          child: Text(
-                            p.notes!,
-                            style: GoogleFonts.outfit(fontSize: 11, fontStyle: FontStyle.italic, color: context.brandAccent),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                  // Internal staff/accounting notes are strictly omitted to safeguard confidential data
                 ],
               ),
             ),

@@ -45,23 +45,6 @@ class _WaterIntakeCardState extends State<WaterIntakeCard> {
     await PushNotificationService.instance.setHydrationRemindersEnabled(val);
   }
 
-  Future<void> _onTestReminder() async {
-    await PushNotificationService.instance.sendImmediateHydrationPrompt();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Hydration alert sent! Check notification tray to log +250ml.',
-            style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
-          ),
-          backgroundColor: context.cardElevated,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final progress = widget.targetMl > 0 ? (widget.currentMl / widget.targetMl).clamp(0.0, 1.0) : 0.0;
@@ -336,28 +319,6 @@ class _WaterIntakeCardState extends State<WaterIntakeCard> {
                     ],
                   ),
                 ),
-                if (_remindersEnabled)
-                  InkWell(
-                    onTap: _onTestReminder,
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: InclineColors.accentOrange.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: InclineColors.accentOrange.withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        'Test Alert',
-                        style: GoogleFonts.outfit(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: InclineColors.accentOrange,
-                        ),
-                      ),
-                    ),
-                  ),
                 SizedBox(
                   height: 24,
                   child: Switch.adaptive(

@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -38,11 +37,9 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(
-    text: kDebugMode ? 'mohitgurjarawanaa@gmail.com' : '',
-  );
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController(text: 'Incline@2026');
+  final _passwordController = TextEditingController();
 
   // Focus nodes for haptic touch feedback and active glow states
   final FocusNode _emailFocusNode = FocusNode();

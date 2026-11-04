@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/models/models.dart';
+import '../../../core/services/push_notification_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/watch_sync_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -200,6 +201,9 @@ class _HomeScreenState extends State<HomeScreen>
       final workoutPlan = results[2] as WorkoutPlan?;
       final trainer = results[3] as MyTrainer?;
       final unreadCount = notifs.where((n) => !n.isRead).length;
+
+      // Evaluate and trigger missed-gym streak defense alert if habitual window passed
+      PushNotificationService.instance.checkAndDispatchMissedGymAlert(analysis);
 
       final wData = WatchSyncService.instance.data;
 
