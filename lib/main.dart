@@ -134,7 +134,6 @@ class _InclineAppRootState extends ConsumerState<_InclineAppRoot> {
           reason: 'Authenticate with Face ID / Biometrics to access Incline',
         );
         if (!authenticated) {
-          await SupabaseService.instance.signOut();
           member = null;
         }
       }
