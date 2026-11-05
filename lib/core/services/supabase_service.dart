@@ -1460,7 +1460,30 @@ class SupabaseService {
 
         if (res != null && res['plan_data'] != null) {
           final planData = res['plan_data'] as Map<String, dynamic>;
-          final days = _parseWorkoutDays(planData);
+
+          bool? parseBool(dynamic val) {
+            if (val == null) return null;
+            if (val is bool) return val;
+            if (val is num) return val != 0;
+            final s = val.toString().trim().toLowerCase();
+            if (s == 'true' || s == '1' || s == 'yes' || s == 'enabled' || s == 'on') return true;
+            if (s == 'false' || s == '0' || s == 'no' || s == 'disabled' || s == 'off' || s == 'none') return false;
+            return null;
+          }
+
+          final bool? planVideoToggle = parseBool(res['show_video']) ??
+              parseBool(res['video_enabled']) ??
+              parseBool(res['enable_video']) ??
+              parseBool(res['video_preview']) ??
+              parseBool(res['show_video_preview']) ??
+              parseBool(planData['show_video']) ??
+              parseBool(planData['video_enabled']) ??
+              parseBool(planData['enable_video']) ??
+              parseBool(planData['video_preview']) ??
+              parseBool(planData['show_video_preview']) ??
+              parseBool(planData['is_video_enabled']);
+
+          final days = _parseWorkoutDays(planData, planVideoToggle: planVideoToggle);
           if (days.isNotEmpty) {
             final isPt = (res['is_personal_training'] as bool?) ??
                 ((res['plan_type'] == 'personal_training') ||
@@ -1522,6 +1545,7 @@ class SupabaseService {
               donts: dontsList,
               proTips: proTipsList,
               isCustomAssigned: true,
+              showVideo: planVideoToggle ?? true,
             );
 
             final plan = await _hydratePlanMediaSignedUrls(initialPlan);
@@ -1545,22 +1569,48 @@ class SupabaseService {
     }
   }
 
-  List<WorkoutDay> _parseWorkoutDays(Map<String, dynamic> raw) {
+  List<WorkoutDay> _parseWorkoutDays(Map<String, dynamic> raw, {bool? planVideoToggle}) {
     List<WorkoutDay> days = [];
-    
+
+    bool? parseBool(dynamic val) {
+      if (val == null) return null;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      final s = val.toString().trim().toLowerCase();
+      if (s == 'true' || s == '1' || s == 'yes' || s == 'enabled' || s == 'on') return true;
+      if (s == 'false' || s == '0' || s == 'no' || s == 'disabled' || s == 'off' || s == 'none') return false;
+      return null;
+    }
+
+    final bool? rawToggle = parseBool(raw['show_video']) ??
+        parseBool(raw['video_enabled']) ??
+        parseBool(raw['enable_video']) ??
+        parseBool(raw['video_preview']) ??
+        parseBool(raw['show_video_preview']) ??
+        parseBool(raw['is_video_enabled']);
+
+    final effectivePlanToggle = (planVideoToggle == false || rawToggle == false)
+        ? false
+        : (planVideoToggle ?? rawToggle);
+
     // Check if nested in 'weeks'
     if (raw['weeks'] != null && raw['weeks'] is List && (raw['weeks'] as List).isNotEmpty) {
       final weeksList = raw['weeks'] as List;
       for (int wIdx = 0; wIdx < weeksList.length; wIdx++) {
         final w = weeksList[wIdx] as Map<String, dynamic>;
         final wDays = w['days'] as List?;
+        final wVideoToggle = parseBool(w['show_video']) ?? parseBool(w['video_preview']) ?? effectivePlanToggle;
         if (wDays != null) {
           final weekLabel = w['week'] != null ? 'Week ${w['week']}' : 'Week ${wIdx + 1}';
           for (int i = 0; i < wDays.length; i++) {
             final d = wDays[i] as Map<String, dynamic>;
+            final dayVideoToggle = parseBool(d['show_video']) ?? parseBool(d['video_preview']) ?? wVideoToggle;
             final exercisesRaw = (d['exercises'] as List?) ?? [];
             final exercises = exercisesRaw
-                .map((e) => WorkoutExercise.fromJson(e as Map<String, dynamic>))
+                .map((e) => WorkoutExercise.fromJson(
+                      e as Map<String, dynamic>,
+                      planVideoToggle: dayVideoToggle,
+                    ))
                 .toList();
 
             final dayStr = d['day'] as String? ?? 'Day ${i + 1}';
@@ -1587,9 +1637,13 @@ class SupabaseService {
     if (rawDays != null) {
       for (int i = 0; i < rawDays.length; i++) {
         final d = rawDays[i] as Map<String, dynamic>;
+        final dayVideoToggle = parseBool(d['show_video']) ?? parseBool(d['video_preview']) ?? effectivePlanToggle;
         final exercisesRaw = (d['exercises'] as List?) ?? [];
         final exercises = exercisesRaw
-            .map((e) => WorkoutExercise.fromJson(e as Map<String, dynamic>))
+            .map((e) => WorkoutExercise.fromJson(
+                  e as Map<String, dynamic>,
+                  planVideoToggle: dayVideoToggle,
+                ))
             .toList();
 
         final dayStr = d['day'] as String? ?? 'Day ${i + 1}';

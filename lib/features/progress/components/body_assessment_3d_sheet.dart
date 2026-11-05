@@ -517,27 +517,24 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                   HapticFeedback.lightImpact();
                   HowbodyQrScannerSheet.show(context, member: widget.member);
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: accentGold.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: accentGold.withValues(alpha: 0.4)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.qr_code_scanner_rounded, size: 13, color: accentGold),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Link Scanner',
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: accentGold,
-                        ),
+                child: Tooltip(
+                  message: 'Link Scanner',
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: accentGold.withValues(alpha: isDark ? 0.15 : 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: accentGold.withValues(alpha: isDark ? 0.4 : 0.35),
                       ),
-                    ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.qr_code_scanner_rounded,
+                      size: 17,
+                      color: accentGold,
+                    ),
                   ),
                 ),
               ),
@@ -556,37 +553,34 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                     );
                   }
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: (pdfUrl != null && pdfUrl.isNotEmpty)
-                        ? AppTheme.emerald.withValues(alpha: 0.15)
-                        : Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
+                child: Tooltip(
+                  message: 'Export PDF',
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
                       color: (pdfUrl != null && pdfUrl.isNotEmpty)
-                          ? AppTheme.emerald.withValues(alpha: 0.4)
-                          : Colors.white.withValues(alpha: 0.18),
+                          ? AppTheme.emerald.withValues(alpha: isDark ? 0.15 : 0.12)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.black.withValues(alpha: 0.05)),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: (pdfUrl != null && pdfUrl.isNotEmpty)
+                            ? AppTheme.emerald.withValues(alpha: isDark ? 0.4 : 0.35)
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.15)
+                                : Colors.black.withValues(alpha: 0.12)),
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.picture_as_pdf_rounded,
-                        size: 13,
-                        color: (pdfUrl != null && pdfUrl.isNotEmpty) ? AppTheme.emerald : Colors.white70,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Export PDF',
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: (pdfUrl != null && pdfUrl.isNotEmpty) ? AppTheme.emerald : Colors.white70,
-                        ),
-                      ),
-                    ],
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.picture_as_pdf_rounded,
+                      size: 17,
+                      color: (pdfUrl != null && pdfUrl.isNotEmpty)
+                          ? AppTheme.emerald
+                          : (isDark ? Colors.white54 : Colors.black45),
+                    ),
                   ),
                 ),
               ),
@@ -665,7 +659,7 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
               HowbodyQrScannerSheet.show(context, member: widget.member);
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: accentGold,
                 borderRadius: BorderRadius.circular(12),
@@ -677,20 +671,23 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.qr_code_scanner_rounded, size: 18, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Link Incline 3D Scanner (QR)',
-                    style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.qr_code_scanner_rounded, size: 18, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Link Incline 3D Scanner (QR)',
+                      style: GoogleFonts.outfit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -707,20 +704,23 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: accentGold.withValues(alpha: 0.3)),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.edit_note_rounded, size: 16, color: accentGold),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Record Manual Measurements',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: accentGold,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.edit_note_rounded, size: 16, color: accentGold),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Record Manual Measurements',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: accentGold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -1336,13 +1336,17 @@ class _BodyAssessment3DSheetState extends State<BodyAssessment3DSheet> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'MANUAL HEALTH MEASUREMENTS',
-              style: GoogleFonts.outfit(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.3,
-                color: accentGold,
+            Expanded(
+              child: Text(
+                'MANUAL HEALTH MEASUREMENTS',
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.3,
+                  color: accentGold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             InclineScaleButton(

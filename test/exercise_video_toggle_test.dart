@@ -168,7 +168,7 @@ void main() {
       expect(find.text('COACH BHAGIRATH PROTOCOL'), findsOneWidget);
     });
 
-    testWidgets('When showVideo is true and videoUrl is present, renders luxury ExerciseVideoCard with 0.75x tag', (tester) async {
+    testWidgets('When showVideo is true and videoUrl is present, renders luxury ExerciseVideoCard', (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.75;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -193,12 +193,10 @@ void main() {
 
       // ExerciseVideoCard is displayed
       expect(find.byType(ExerciseVideoCard), findsOneWidget);
-      expect(find.text('0.75× SLOW-MO'), findsOneWidget);
-      expect(find.text('Chest Press · 0.75×'), findsOneWidget);
+      expect(find.text('Chest Press'), findsWidgets);
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
 
       // Biomechanics guide is still present below the video player
-      expect(find.text('Chest Press'), findsWidgets);
       expect(find.text('SUPER HORIZONTAL MULTI PRESS'), findsOneWidget);
     });
 
@@ -313,6 +311,40 @@ void main() {
       };
       final onEx = WorkoutExercise.fromJson(onJson);
       expect(onEx.showVideo, isTrue);
+    });
+
+    test('WorkoutExercise respects planVideoToggle false even if exercise has valid video_url', () {
+      final json = {
+        'name': 'Leg Press',
+        'sets': 4,
+        'reps': '12',
+        'video_url': 'https://example.com/leg_press.mp4',
+      };
+      final ex = WorkoutExercise.fromJson(json, planVideoToggle: false);
+      expect(ex.showVideo, isFalse);
+    });
+
+    test('WorkoutPlan serializes and deserializes show_video toggle accurately', () {
+      final planOff = WorkoutPlan(
+        id: 'p1',
+        planName: 'Strength Split',
+        days: const [],
+        showVideo: false,
+      );
+      final jsonOff = planOff.toJson();
+      expect(jsonOff['show_video'], isFalse);
+
+      final restoredOff = WorkoutPlan.fromJson(jsonOff);
+      expect(restoredOff.showVideo, isFalse);
+
+      final planOn = WorkoutPlan(
+        id: 'p2',
+        planName: 'Hypertrophy Split',
+        days: const [],
+        showVideo: true,
+      );
+      final restoredOn = WorkoutPlan.fromJson(planOn.toJson());
+      expect(restoredOn.showVideo, isTrue);
     });
   });
 }

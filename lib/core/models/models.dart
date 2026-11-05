@@ -1,6 +1,7 @@
 /// Data models for the Incline mobile platform matching Supabase schema.
 library;
 
+import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import '../config/env_config.dart';
 
@@ -863,7 +864,7 @@ class WorkoutExercise {
     return '${EnvConfig.supabaseUrl}/storage/v1/object/public/workout-videos/$cleanPath';
   }
 
-  factory WorkoutExercise.fromJson(Map<String, dynamic> json) {
+  factory WorkoutExercise.fromJson(Map<String, dynamic> json, {bool? planVideoToggle}) {
     String? cue = json['coach_cue'] as String? ?? json['cue'] as String?;
     if (cue == null && json['form_tips'] != null) {
       if (json['form_tips'] is List) {
@@ -881,15 +882,32 @@ class WorkoutExercise {
     final resolvedVideo = _resolveVideoUrl(rawVideo);
     final hasValidVideo = resolvedVideo != null && resolvedVideo.isNotEmpty;
 
-    // Backend toggle: respects 'show_video', 'video_enabled', 'enable_video', 'display_video'
-    // If backend sets toggle to false -> showVideo is false (only show image).
-    // If backend sets toggle to true -> showVideo is true (show inline video).
-    // If not specified -> showVideo is true if valid video exists, otherwise false.
-    final bool? backendToggle = json['show_video'] as bool? ??
-        json['video_enabled'] as bool? ??
-        json['enable_video'] as bool? ??
-        json['display_video'] as bool?;
-    final bool effectiveShowVideo = backendToggle ?? hasValidVideo;
+    // Helper to parse boolean from diverse backend representations (bool, string, int)
+    bool? parseBool(dynamic val) {
+      if (val == null) return null;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      final s = val.toString().trim().toLowerCase();
+      if (s == 'true' || s == '1' || s == 'yes' || s == 'enabled' || s == 'on') return true;
+      if (s == 'false' || s == '0' || s == 'no' || s == 'disabled' || s == 'off' || s == 'none') return false;
+      return null;
+    }
+
+    // Backend toggle: respects 'show_video', 'video_enabled', 'enable_video', 'display_video', 'video_preview'
+    // If backend or plan sets toggle to false -> showVideo is strictly false (never show video player).
+    // If backend sets toggle to true -> showVideo is true only if valid video URL exists.
+    // If not specified -> showVideo is true only if valid video URL exists.
+    final bool? backendToggle = parseBool(json['show_video']) ??
+        parseBool(json['video_enabled']) ??
+        parseBool(json['enable_video']) ??
+        parseBool(json['display_video']) ??
+        parseBool(json['video_preview']) ??
+        parseBool(json['show_video_preview']) ??
+        parseBool(json['has_video']);
+
+    final bool effectiveShowVideo = (planVideoToggle == false || backendToggle == false || !hasValidVideo)
+        ? false
+        : (backendToggle ?? planVideoToggle ?? hasValidVideo);
 
     return WorkoutExercise(
       name: json['name'] as String? ?? json['exercise'] as String? ?? 'Exercise',
@@ -986,7 +1004,41 @@ class WorkoutDay {
   });
 
   int get totalSets => exercises.fold(0, (sum, ex) => sum + ex.sets);
-  int get estimatedMinutes => isRest ? 0 : (exercises.length * 5).clamp(20, 90);
+
+  /// Scientifically computed duration based on exercise sets, reps, rest intervals, equipment setup, and warm-up
+  int get calculatedMinutes {
+    if (isRest || exercises.isEmpty) return 0;
+    int totalSeconds = 0;
+
+    // Warm-up & cool-down allowance (5 min each if present)
+    if (warmUp != null && warmUp!.isNotEmpty) totalSeconds += 300;
+    if (coolDown != null && coolDown!.isNotEmpty) totalSeconds += 300;
+
+    for (final ex in exercises) {
+      final lowerReps = ex.reps.toLowerCase();
+      if (lowerReps.contains('min')) {
+        final minDigits = int.tryParse(lowerReps.replaceAll(RegExp(r'\D'), '')) ?? 15;
+        totalSeconds += minDigits * 60 * ex.sets;
+        continue;
+      }
+
+      // Lifting Time Under Tension (TUT): ~35s per set (10-12 reps @ 3s cadence)
+      final workSeconds = ex.sets * 35;
+
+      // Rest intervals between sets: (sets - 1) * restSeconds
+      final restSecondsTotal = math.max(0, ex.sets - 1) * ex.restSeconds;
+
+      // Equipment transition / machine setup time: ~45s per exercise
+      const setupSeconds = 45;
+
+      totalSeconds += workSeconds + restSecondsTotal + setupSeconds;
+    }
+
+    final minutes = (totalSeconds / 60).round();
+    return minutes.clamp(15, 120);
+  }
+
+  int get estimatedMinutes => isRest ? 0 : calculatedMinutes;
   int get completedExercisesCount => exercises.where((ex) => ex.isCompleted).length;
 
   WorkoutDay copyWith({
@@ -1059,6 +1111,7 @@ class WorkoutPlan {
   final List<String> donts;
   final List<String> proTips;
   final bool isCustomAssigned;
+  final bool showVideo;
 
   const WorkoutPlan({
     required this.id,
@@ -1077,6 +1130,7 @@ class WorkoutPlan {
     this.donts = const [],
     this.proTips = const [],
     this.isCustomAssigned = false,
+    this.showVideo = true,
   });
 
   Map<String, dynamic> toJson() => {
@@ -1095,10 +1149,28 @@ class WorkoutPlan {
     'donts': donts,
     'pro_tips': proTips,
     'is_custom_assigned': isCustomAssigned,
+    'show_video': showVideo,
     'days': days.map((d) => d.toJson()).toList(),
   };
 
   factory WorkoutPlan.fromJson(Map<String, dynamic> json) {
+    bool? parseBool(dynamic val) {
+      if (val == null) return null;
+      if (val is bool) return val;
+      if (val is num) return val != 0;
+      final s = val.toString().trim().toLowerCase();
+      if (s == 'true' || s == '1' || s == 'yes' || s == 'enabled' || s == 'on') return true;
+      if (s == 'false' || s == '0' || s == 'no' || s == 'disabled' || s == 'off' || s == 'none') return false;
+      return null;
+    }
+
+    final planVideoToggle = parseBool(json['show_video']) ??
+        parseBool(json['video_enabled']) ??
+        parseBool(json['enable_video']) ??
+        parseBool(json['video_preview']) ??
+        parseBool(json['show_video_preview']) ??
+        parseBool(json['has_video']);
+
     final rawDays = json['days'] as List<dynamic>? ?? [];
     final days = rawDays.map((d) => WorkoutDay.fromJson(d as Map<String, dynamic>)).toList();
     return WorkoutPlan(
@@ -1118,6 +1190,7 @@ class WorkoutPlan {
       donts: (json['donts'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       proTips: (json['pro_tips'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
       isCustomAssigned: json['is_custom_assigned'] as bool? ?? false,
+      showVideo: planVideoToggle ?? true,
     );
   }
 
@@ -1138,6 +1211,7 @@ class WorkoutPlan {
     List<String>? donts,
     List<String>? proTips,
     bool? isCustomAssigned,
+    bool? showVideo,
   }) {
     return WorkoutPlan(
       id: id ?? this.id,
@@ -1156,6 +1230,7 @@ class WorkoutPlan {
       donts: donts ?? this.donts,
       proTips: proTips ?? this.proTips,
       isCustomAssigned: isCustomAssigned ?? this.isCustomAssigned,
+      showVideo: showVideo ?? this.showVideo,
     );
   }
 }

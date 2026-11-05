@@ -33,7 +33,9 @@ class AnimatedExerciseVisualizer extends StatelessWidget {
   Widget build(BuildContext context) {
     final profile = ExerciseMappingEngine.getProfile(exercise.name);
     final restPeriod = exercise.rest ?? profile.recommendedRest;
-    final effectiveShowVideo = showVideo ?? exercise.showVideo;
+    final effectiveShowVideo = (showVideo ?? exercise.showVideo) &&
+        exercise.videoUrl != null &&
+        exercise.videoUrl!.trim().isNotEmpty;
 
     return BentoCard(
       padding: const EdgeInsets.all(20),
@@ -43,7 +45,7 @@ class AnimatedExerciseVisualizer extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 0. Media Viewport (In-App Video Demo Card vs Static Image / Biomechanics Guide)
-          if (effectiveShowVideo && exercise.videoUrl != null && exercise.videoUrl!.isNotEmpty) ...[
+          if (effectiveShowVideo) ...[
             ExerciseVideoCard(
               key: ValueKey('vid_${exercise.name}_${exercise.videoUrl}'),
               videoUrl: exercise.videoUrl!,
@@ -51,7 +53,7 @@ class AnimatedExerciseVisualizer extends StatelessWidget {
               thumbnailUrl: exercise.imageUrl,
             ),
             const SizedBox(height: 16),
-          ] else if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty) ...[
+          ] else if (exercise.imageUrl != null && exercise.imageUrl!.trim().isNotEmpty) ...[
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ClipRRect(

@@ -43,12 +43,16 @@ class WorkoutExecutionSheet extends StatefulWidget {
   final WorkoutDay day;
   final int initialExerciseIndex;
   final VoidCallback onExerciseUpdated;
+  final WorkoutPlan? plan;
+  final bool? showVideo;
 
   const WorkoutExecutionSheet({
     super.key,
     required this.day,
     this.initialExerciseIndex = 0,
     required this.onExerciseUpdated,
+    this.plan,
+    this.showVideo,
   });
 
   @override
@@ -347,6 +351,7 @@ class _WorkoutExecutionSheetState extends State<WorkoutExecutionSheet> {
                         exerciseIndex: _currentExerciseIndex,
                         totalExercises: exercises.length,
                         isResting: _restTimerNotifier.value.isResting,
+                        showVideo: (widget.showVideo ?? widget.plan?.showVideo ?? true) && currentEx.showVideo,
                         showProtocol: false, // Moved to bottom below sets to prevent cutting off video view
                       ),
                     ),

@@ -33,7 +33,6 @@ dependencies:
   mobile_scanner: ^5.2.3
   video_player: ^2.10.0
   flutter_svg: ^2.2.0
-  rive: ^0.13.20
 
 dev_dependencies:
   flutter_test:
@@ -46,5 +45,4 @@ flutter:
     - assets/incline_logo.png
     - assets/avatar_placeholder.jpg
     - assets/images/
-    - assets/animations/
     - google_fonts/

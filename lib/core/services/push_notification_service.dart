@@ -30,7 +30,16 @@ class PushNotificationService {
 
     try {
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const initSettings = InitializationSettings(android: androidInit);
+      const darwinInit = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      const initSettings = InitializationSettings(
+        android: androidInit,
+        iOS: darwinInit,
+        macOS: darwinInit,
+      );
 
       await _localNotifications.initialize(
         initSettings,
@@ -70,6 +79,17 @@ class PushNotificationService {
         await androidPlugin.createNotificationChannel(hydrationChannel);
         // Request permission on Android 13+
         await androidPlugin.requestNotificationsPermission();
+      }
+
+      // Request authorization on iOS / macOS Darwin
+      final iosPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      if (iosPlugin != null) {
+        await iosPlugin.requestPermissions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
       }
 
       _isInitialized = true;
@@ -168,7 +188,17 @@ class PushNotificationService {
         enableVibration: true,
       );
 
-      const notificationDetails = NotificationDetails(android: androidDetails);
+      const darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      const notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
 
       // Schedule periodic reminders across active hours
       await _localNotifications.periodicallyShow(
@@ -217,7 +247,17 @@ class PushNotificationService {
         enableVibration: true,
       );
 
-      final notificationDetails = NotificationDetails(android: androidDetails);
+      const darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
       await _localNotifications.show(
         8802,
         title,
@@ -312,7 +352,17 @@ class PushNotificationService {
         enableVibration: true,
       );
 
-      final notificationDetails = NotificationDetails(android: androidDetails);
+      const darwinDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: darwinDetails,
+        macOS: darwinDetails,
+      );
       await _localNotifications.show(
         DateTime.now().millisecondsSinceEpoch ~/ 1000,
         title,

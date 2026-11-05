@@ -9,7 +9,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   local_auth_windows
   permission_handler_windows
   printing
-  rive_common
   url_launcher_windows
 )
 

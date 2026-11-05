@@ -631,27 +631,37 @@ class _HomeHeroCardState extends State<HomeHeroCard>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'YOUR STREAK',
-          maxLines: 1,
-          overflow: TextOverflow.fade,
-          softWrap: false,
-          style: GoogleFonts.inter(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.65)
-                : InclineColors.lightTextSecondary,
-            letterSpacing: 0.8,
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.local_fire_department_rounded,
+              size: 13,
+              color: InclineColors.accentOrange,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'YOUR STREAK',
+              maxLines: 1,
+              overflow: TextOverflow.fade,
+              softWrap: false,
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.65)
+                    : InclineColors.lightTextSecondary,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Count-up animation on streak value
               TweenAnimationBuilder<double>(
@@ -673,10 +683,44 @@ class _HomeHeroCardState extends State<HomeHeroCard>
                   );
                 },
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 10),
+              // Luxury Thermal Flame Jewel Badge (replaces raw OS emoji)
               ScaleTransition(
                 scale: _flameScaleAnimation,
-                child: const Text('🔥', style: TextStyle(fontSize: 22)),
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        InclineColors.accentOrange,
+                        InclineColors.thermalAmber,
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: InclineColors.accentOrange.withValues(alpha: 0.45),
+                        blurRadius: 10,
+                        spreadRadius: -1,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.40),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.whatshot_rounded,
+                      size: 17,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -691,61 +735,90 @@ class _HomeHeroCardState extends State<HomeHeroCard>
     final hasStreak = effectiveStreak > 0;
 
     final String motivationalCopy;
+    final IconData badgeIcon;
+
     if (effectiveStreak >= 7) {
       motivationalCopy = 'ONE WEEK STRONG';
+      badgeIcon = Icons.military_tech_rounded;
     } else if (effectiveStreak >= 4) {
       motivationalCopy = 'KEEP IT GOING';
+      badgeIcon = Icons.whatshot_rounded;
+    } else if (effectiveStreak == 3) {
+      motivationalCopy = '3-DAY MOMENTUM';
+      badgeIcon = Icons.whatshot_rounded;
     } else if (effectiveStreak >= 1) {
       motivationalCopy = 'BUILDING MOMENTUM';
+      badgeIcon = Icons.trending_up_rounded;
     } else {
       motivationalCopy = 'START YOUR STREAK';
+      badgeIcon = Icons.track_changes_rounded;
     }
 
+    final badgeColor = hasStreak
+        ? InclineColors.accentOrange
+        : (isDark ? Colors.white : InclineColors.lightTextSecondary);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6.5),
       decoration: BoxDecoration(
         color: (hasStreak
                 ? InclineColors.accentOrange
                 : (isDark ? Colors.white : InclineColors.lightHeroSpotlight))
             .withValues(
-                alpha: hasStreak ? (isDark ? 0.2 : 0.12) : (isDark ? 0.08 : 0.6)),
+                alpha: hasStreak ? (isDark ? 0.16 : 0.10) : (isDark ? 0.08 : 0.5)),
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
           color: (hasStreak
                   ? InclineColors.accentOrange
                   : (isDark ? Colors.white : InclineColors.lightCardBorder))
               .withValues(
-                  alpha: hasStreak ? (isDark ? 0.35 : 0.25) : (isDark ? 0.2 : 0.6)),
+                  alpha: hasStreak ? (isDark ? 0.45 : 0.30) : (isDark ? 0.2 : 0.6)),
+          width: 1.1,
         ),
+        boxShadow: hasStreak
+            ? [
+                BoxShadow(
+                  color: InclineColors.accentOrange
+                      .withValues(alpha: isDark ? 0.20 : 0.10),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            hasStreak
-                ? Icons.arrow_outward_rounded
-                : Icons.track_changes_rounded,
-            size: 13,
-            color: hasStreak
-                ? InclineColors.accentOrange
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.8)
-                    : InclineColors.lightTextSecondary),
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: hasStreak
+                  ? InclineColors.accentOrange.withValues(alpha: 0.22)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : Colors.black.withValues(alpha: 0.05)),
+            ),
+            child: Center(
+              child: Icon(
+                badgeIcon,
+                size: 11,
+                color: badgeColor,
+              ),
+            ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Flexible(
             child: Text(
               motivationalCopy,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 11.5,
-                fontWeight: FontWeight.w600,
-                color: hasStreak
-                    ? InclineColors.accentOrange
-                    : (isDark
-                        ? Colors.white.withValues(alpha: 0.85)
-                        : InclineColors.lightTextPrimary),
+                fontWeight: FontWeight.w800,
+                color: badgeColor,
+                letterSpacing: 0.6,
               ),
             ),
           ),

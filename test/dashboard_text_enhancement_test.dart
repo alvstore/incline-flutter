@@ -99,6 +99,48 @@ void main() {
       expect(find.text('WEEKLY ACTIVITY'), findsOneWidget);
     });
 
+    testWidgets('Streak 3 days displays 3 Days and 3-DAY MOMENTUM milestone badge without emoji', (tester) async {
+      final analysis3 = MemberAttendanceAnalysis(
+        streakDays: 3,
+        bestStreakDays: 10,
+        totalVisits: 15,
+        monthlyVisits: 6,
+        isVisitedToday: false,
+        habitualTime: '6:00 PM',
+        motivationTitle: 'On a roll',
+        motivationMessage: 'Great consistency',
+        motivationUrgency: 'gentle',
+        weekActivity: const [true, true, true, false, false, false, false],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: HomeHeroCard(
+                memberName: 'Mohit',
+                attendanceAnalysis: analysis3,
+                unreadNotifications: 0,
+                onNotificationTap: () {},
+                onProfileTap: () {},
+                onBookTap: () {},
+                onWorkoutTap: () {},
+                onWaterTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('YOUR STREAK'), findsOneWidget);
+      expect(find.text('3 Days'), findsOneWidget);
+      expect(find.text('3-DAY MOMENTUM'), findsOneWidget);
+      expect(find.byIcon(Icons.whatshot_rounded), findsWidgets);
+      expect(find.text('🔥'), findsNothing);
+    });
+
     testWidgets('Streak 4..6 displays KEEP IT GOING', (tester) async {
       final analysis4 = MemberAttendanceAnalysis(
         streakDays: 4,

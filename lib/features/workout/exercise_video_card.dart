@@ -230,7 +230,7 @@ class _ExerciseVideoCardState extends State<ExerciseVideoCard> {
             children: [
               // 1. Media Content (WebP Image vs In-App MP4 VideoPlayer vs Fallback)
               if (widget.videoUrl.trim().isEmpty || _hasError)
-                _buildFallbackBackground(context, errorMessage: 'Form video stream unavailable')
+                _buildFallbackBackground(context)
               else if (_isWebpOrImage)
                 _buildWebpContent()
               else if (_isInitialized && _controller != null)
@@ -393,7 +393,18 @@ class _ExerciseVideoCardState extends State<ExerciseVideoCard> {
     );
   }
 
-  Widget _buildFallbackBackground(BuildContext context, {String? errorMessage}) {
+  Widget _buildFallbackBackground(BuildContext context) {
+    if (widget.thumbnailUrl != null && widget.thumbnailUrl!.trim().isNotEmpty) {
+      return Image.network(
+        widget.thumbnailUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildLuxuryTechniqueCard(context),
+      );
+    }
+    return _buildLuxuryTechniqueCard(context);
+  }
+
+  Widget _buildLuxuryTechniqueCard(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -410,22 +421,46 @@ class _ExerciseVideoCardState extends State<ExerciseVideoCard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.fitness_center_rounded,
-              size: 40,
-              color: context.textMuted.withValues(alpha: 0.3),
-            ),
-            if (errorMessage != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                errorMessage,
-                style: GoogleFonts.outfit(
-                  fontSize: 10.5,
-                  color: context.textMuted,
-                  fontWeight: FontWeight.w500,
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: context.brandAccent.withValues(alpha: 0.12),
+                border: Border.all(
+                  color: context.brandAccent.withValues(alpha: 0.3),
+                  width: 1.0,
                 ),
               ),
-            ],
+              child: Center(
+                child: Icon(
+                  Icons.fitness_center_rounded,
+                  size: 22,
+                  color: context.brandAccent,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  width: 0.8,
+                ),
+              ),
+              child: Text(
+                'FORM TECHNIQUE GUIDE',
+                style: GoogleFonts.outfit(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: context.textSecondary,
+                ),
+              ),
+            ),
           ],
         ),
       ),

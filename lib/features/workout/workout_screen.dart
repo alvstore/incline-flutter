@@ -16,6 +16,8 @@ import '../profile/member_requests_screen.dart';
 import 'workout_execution_sheet.dart';
 import '../notifications/notifications_screen.dart';
 import '../../core/services/watch_sync_service.dart';
+import '../../core/constants/incline_general_programs.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 /// Full Day-Wise Workout Schedule and Interactive Routine Screen
 class WorkoutScreen extends StatefulWidget {
@@ -210,6 +212,8 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         builder: (ctx) => WorkoutExecutionSheet(
           day: currentDay,
           initialExerciseIndex: exerciseIndex,
+          plan: _plan,
+          showVideo: _plan?.showVideo,
           onExerciseUpdated: () async {
             setState(() {});
             final today = DateTime.now().toIso8601String().substring(0, 10);
@@ -1475,19 +1479,30 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
         ? 'Your dedicated 1-on-1 coach is actively programming your progressive overload split, biomechanics, and recovery protocols.'
         : 'Incline club coaches supervise the floor, offer lifting cues, and conduct 3D assessments. Upgrade to 1:1 Personal Training for dedicated daily coaching.';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final amberTextColor = isDark ? const Color(0xFFFBBF24) : const Color(0xFF92400E);
+    final amberBgColor = isDark ? Colors.amber.withValues(alpha: 0.15) : const Color(0xFFFEF3C7);
+    final amberBorderColor = isDark ? Colors.amber.withValues(alpha: 0.4) : const Color(0xFFFDE68A);
+
+    final emeraldTextColor = isDark ? AppTheme.emerald : const Color(0xFF047857);
+    final emeraldBgColor = isDark ? AppTheme.emerald.withValues(alpha: 0.15) : const Color(0xFFD1FAE5);
+    final emeraldBorderColor = isDark ? AppTheme.emerald.withValues(alpha: 0.4) : const Color(0xFFA7F3D0);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Unified Assigned Coach & Training Tier Card (Single Source of Truth)
           BentoCard(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             backgroundColor: context.cardElevated,
             border: Border.all(
               color: isPtPurchased
-                  ? AppTheme.emerald.withValues(alpha: 0.35)
-                  : context.brandAccent.withValues(alpha: 0.35),
+                  ? AppTheme.emerald.withValues(alpha: isDark ? 0.4 : 0.3)
+                  : context.brandAccent.withValues(alpha: isDark ? 0.4 : 0.3),
+              width: 1.2,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1495,20 +1510,49 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 // Top: Coach Avatar, Name & Verified Badge
                 Row(
                   children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isPtPurchased ? AppTheme.emerald : context.brandAccent,
-                          width: 2,
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isPtPurchased ? AppTheme.emerald : context.brandAccent,
+                              width: 2.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: (isPtPurchased ? AppTheme.emerald : context.brandAccent)
+                                    .withValues(alpha: isDark ? 0.25 : 0.15),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                            color: context.cardBg,
+                          ),
+                          child: ClipOval(
+                            child: _buildTrainerAvatar(avatarUrl),
+                          ),
                         ),
-                        color: context.cardBg,
-                      ),
-                      child: ClipOval(
-                        child: _buildTrainerAvatar(avatarUrl),
-                      ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: AppTheme.emerald,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark ? const Color(0xFF161616) : Colors.white,
+                                width: 2.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -1521,9 +1565,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 child: Text(
                                   trainerName,
                                   style: GoogleFonts.outfit(
-                                    fontSize: 16,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.w800,
                                     color: context.textPrimary,
+                                    letterSpacing: -0.2,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1536,22 +1581,22 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           Text(
                             coachRole,
                             style: GoogleFonts.outfit(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: isPtPurchased ? AppTheme.emerald : context.textSecondary,
+                              color: isPtPurchased ? emeraldTextColor : context.textSecondary,
                             ),
                           ),
-                          const SizedBox(height: 1),
+                          const SizedBox(height: 2),
                           Text(
                             _assignedTrainer != null
                                 ? 'Dynamic Backend Assigned Coach'
                                 : 'Incline Coaching Team',
                             style: GoogleFonts.outfit(
-                              fontSize: 10,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.w500,
                               color: context.textMuted,
                             ),
@@ -1562,24 +1607,21 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // Status Badges Row
                 Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: isPtPurchased
-                            ? AppTheme.emerald.withValues(alpha: 0.15)
-                            : Colors.amber.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
+                        color: isPtPurchased ? emeraldBgColor : amberBgColor,
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: isPtPurchased
-                              ? AppTheme.emerald.withValues(alpha: 0.4)
-                              : Colors.amber.withValues(alpha: 0.4),
+                          color: isPtPurchased ? emeraldBorderColor : amberBorderColor,
+                          width: 1,
                         ),
                       ),
                       child: Row(
@@ -1587,144 +1629,145 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         children: [
                           Icon(
                             isPtPurchased ? Icons.verified_rounded : Icons.shield_outlined,
-                            size: 12,
-                            color: isPtPurchased ? AppTheme.emerald : Colors.amber,
+                            size: 13,
+                            color: isPtPurchased ? emeraldTextColor : amberTextColor,
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 6),
                           Text(
                             isPtPurchased
                                 ? '1-ON-1 PERSONAL TRAINING'
                                 : 'GENERAL TRAINING PROGRAM',
                             style: GoogleFonts.outfit(
-                              fontSize: 9.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.6,
-                              color: isPtPurchased ? AppTheme.emerald : Colors.amber,
+                              color: isPtPurchased ? emeraldTextColor : amberTextColor,
                             ),
                           ),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                       decoration: BoxDecoration(
                         color: isPtPurchased
-                            ? AppTheme.emerald.withValues(alpha: 0.12)
-                            : context.brandAccent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
+                            ? emeraldBgColor
+                            : context.brandAccent.withValues(alpha: isDark ? 0.12 : 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isPtPurchased
+                              ? emeraldBorderColor
+                              : context.brandAccent.withValues(alpha: isDark ? 0.35 : 0.25),
+                          width: 1,
+                        ),
                       ),
                       child: Text(
                         isPtPurchased ? 'ACTIVE BESPOKE PROTOCOL' : 'INCLUDED WITH MEMBERSHIP',
                         style: GoogleFonts.outfit(
-                          fontSize: 9.5,
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: isPtPurchased ? AppTheme.emerald : context.brandAccent,
+                          color: isPtPurchased ? emeraldTextColor : context.brandAccent,
                         ),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
                 // Description
                 Text(
                   coachBio,
                   style: GoogleFonts.outfit(
-                    fontSize: 12,
+                    fontSize: 12.5,
                     color: context.textSecondary,
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Divider(height: 1, color: context.borderCol.withValues(alpha: 0.4)),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
 
                 // Single Source of Truth Action Buttons
-                Row(
+                Column(
                   children: [
-                    // Button 1: Call Coach
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _callTrainer(trainerPhone),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 11),
-                          decoration: BoxDecoration(
-                            color: context.cardBg,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppTheme.emerald.withValues(alpha: 0.5)),
+                    // Primary Button: Upgrade to Personal Training / Inquire Coach
+                    InclineScaleButton(
+                      onTap: isPtPurchased ? _openTrainerDialog : _showRequestPtUpgradeSheet,
+                      child: Container(
+                        width: double.infinity,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isPtPurchased
+                                ? [context.cardElevated, context.cardBg]
+                                : [context.brandAccent, InclineColors.accentOrange],
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.call_rounded, size: 15, color: AppTheme.emerald),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Call Coach',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.emerald,
-                                ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: isPtPurchased ? Border.all(color: context.borderCol) : null,
+                          boxShadow: isPtPurchased
+                              ? null
+                              : [
+                                  BoxShadow(
+                                    color: context.brandAccent.withValues(alpha: 0.32),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              isPtPurchased ? Icons.chat_bubble_outline_rounded : Icons.star_rounded,
+                              size: 17,
+                              color: isPtPurchased ? context.textPrimary : context.onBrandAccent,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isPtPurchased ? 'Inquire with Coach' : 'Upgrade to Personal Training',
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: isPtPurchased ? context.textPrimary : context.onBrandAccent,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-
-                    const SizedBox(width: 10),
-
-                    // Button 2: If General Program -> Upgrade to Personal Training
-                    //           Else (PT Purchased) -> Inquire Coach
-                    Expanded(
-                      child: InkWell(
-                        onTap: isPtPurchased ? _openTrainerDialog : _showRequestPtUpgradeSheet,
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 11),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: isPtPurchased
-                                  ? [context.cardElevated, context.cardBg]
-                                  : [context.brandAccent, InclineColors.accentOrange],
+                    const SizedBox(height: 10),
+                    // Secondary Button: Call Coach
+                    InclineScaleButton(
+                      onTap: () => _callTrainer(trainerPhone),
+                      child: Container(
+                        width: double.infinity,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppTheme.emerald.withValues(alpha: 0.1)
+                              : AppTheme.emerald.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppTheme.emerald.withValues(alpha: isDark ? 0.45 : 0.35),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.call_rounded, size: 16, color: AppTheme.emerald),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Call Coach',
+                              style: GoogleFonts.outfit(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.emerald,
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(10),
-                            border: isPtPurchased ? Border.all(color: context.borderCol) : null,
-                            boxShadow: isPtPurchased
-                                ? null
-                                : [
-                                    BoxShadow(
-                                      color: context.brandAccent.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                isPtPurchased ? Icons.chat_bubble_outline_rounded : Icons.star_rounded,
-                                size: 15,
-                                color: isPtPurchased ? context.textPrimary : context.onBrandAccent,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  isPtPurchased ? 'Inquire Coach' : 'Upgrade to Personal Training',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: isPtPurchased ? context.textPrimary : context.onBrandAccent,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
+                          ],
                         ),
                       ),
                     ),
@@ -1732,7 +1775,10 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                 ),
               ],
             ),
-          ),
+          )
+              .animate()
+              .fadeIn(duration: 350.ms, curve: Curves.easeOutCubic)
+              .slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic),
 
           const SizedBox(height: 24),
         ],
@@ -2330,6 +2376,37 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                         foregroundColor: context.onBrandAccent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         elevation: 3,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: InclineScaleButton(
+                    onTap: () {
+                      setState(() {
+                        _plan = InclineGeneralPrograms.advanceFitnessWorkoutProgram;
+                        _selectedDayIndex = 0;
+                      });
+                    },
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _plan = InclineGeneralPrograms.advanceFitnessWorkoutProgram;
+                          _selectedDayIndex = 0;
+                        });
+                      },
+                      icon: const Icon(Icons.fitness_center_rounded, size: 18),
+                      label: Text(
+                        'View Standard Club Program',
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: context.brandAccent,
+                        side: BorderSide(color: context.brandAccent.withValues(alpha: 0.5), width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ),
