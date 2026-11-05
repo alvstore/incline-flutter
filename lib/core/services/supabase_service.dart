@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/env_config.dart';
 import '../models/models.dart';
 import '../utils/ist_date_utils.dart';
 import 'offline_sync_service.dart';
+import 'push_notification_service.dart';
 
 /// Cryptographically verified payment result returned by backend verify-payment Edge Function.
 class PaymentVerificationResult {
@@ -3726,62 +3728,156 @@ class SupabaseService {
   // NOTIFICATIONS & CLUB ANNOUNCEMENTS
   // ---------------------------------------------------------------------------
 
-  /// Fetches authentic notifications and bulletins for the user from public.notifications.
+  /// Fetches authentic notifications and bulletins for the user from both:
+  /// 1. public.notifications (Personal & Broadcast member notifications)
+  /// 2. public.announcements (Club-wide bulletins & announcements sent from backend)
   /// Zero-mock policy: Returns an empty list if no notifications exist (never injects fake quotes).
   Future<List<GymNotification>> fetchNotifications([String? userIdOrMemberId]) async {
     try {
       final currentUserId = client.auth.currentUser?.id;
-      if (currentUserId == null) return const [];
+      final curMember = _cachedCurrentMember ?? (currentUserId != null ? await fetchCurrentMember() : null);
+      final effectiveMemberId = userIdOrMemberId ?? curMember?.id;
+      final effectiveBranchId = curMember?.branchId;
 
-      final res = await client
-          .from('notifications')
-          .select('*')
-          .eq('user_id', currentUserId)
-          .order('created_at', ascending: false)
-          .limit(50);
+      List<GymNotification> personalNotifs = [];
 
-      final list = res as List;
-      return list.map((n) {
-        final actionUrl = (n['action_url'] as String?) ?? (n['link'] as String?);
-        return GymNotification(
-          id: n['id'] as String? ?? 'notif_${DateTime.now().millisecondsSinceEpoch}',
-          title: n['title'] as String? ?? 'Club Bulletin',
-          message: n['message'] as String? ?? '',
-          timestamp: DateTime.tryParse(n['created_at']?.toString() ?? '') ?? DateTime.now(),
-          type: n['type'] as String? ?? (n['category'] as String?) ?? 'announcement',
-          isRead: n['is_read'] as bool? ?? false,
-          badge: n['badge'] as String? ?? (n['category'] as String?)?.toUpperCase(),
-          actionLabel: actionUrl != null ? 'View Details' : null,
-        );
-      }).toList();
+      // 1. Fetch personal and broadcast notifications from public.notifications
+      if (currentUserId != null || effectiveMemberId != null) {
+        try {
+          var notifQuery = client.from('notifications').select('*');
+
+          if (currentUserId != null && effectiveMemberId != null && effectiveMemberId != currentUserId) {
+            notifQuery = notifQuery.or('user_id.eq.$currentUserId,user_id.eq.$effectiveMemberId,user_id.is.null');
+          } else if (currentUserId != null) {
+            notifQuery = notifQuery.or('user_id.eq.$currentUserId,user_id.is.null');
+          } else if (effectiveMemberId != null) {
+            notifQuery = notifQuery.or('user_id.eq.$effectiveMemberId,user_id.is.null');
+          }
+
+          final res = await notifQuery.order('created_at', ascending: false).limit(50);
+          final list = res as List;
+
+          personalNotifs = list.map((n) {
+            final actionUrl = (n['action_url'] as String?) ?? (n['link'] as String?);
+            return GymNotification(
+              id: n['id'] as String? ?? 'notif_${DateTime.now().millisecondsSinceEpoch}',
+              title: n['title'] as String? ?? 'Incline Alert',
+              message: n['message'] as String? ?? '',
+              timestamp: DateTime.tryParse(n['created_at']?.toString() ?? '') ?? DateTime.now(),
+              type: n['type'] as String? ?? (n['category'] as String?) ?? 'announcement',
+              isRead: n['is_read'] as bool? ?? false,
+              badge: n['badge'] as String? ?? (n['category'] as String?)?.toUpperCase(),
+              actionLabel: actionUrl != null ? 'View Details' : null,
+            );
+          }).toList();
+        } catch (e) {
+          debugPrint('[INCLINE] fetchNotifications personal query notice: $e');
+        }
+      }
+
+      // 2. Fetch authentic club announcements & broadcasts from public.announcements
+      List<GymNotification> announcementList = [];
+      try {
+        final nowIso = DateTime.now().toUtc().toIso8601String();
+        final annRes = await client
+            .from('announcements')
+            .select('*')
+            .eq('is_active', true)
+            .order('priority', ascending: false)
+            .order('created_at', ascending: false)
+            .limit(30);
+
+        final rawList = annRes as List;
+        final prefs = await SharedPreferences.getInstance();
+        final readAnnIds = (prefs.getStringList('incline_read_announcement_ids') ?? []).toSet();
+
+        for (final a in rawList) {
+          final targetAudience = a['target_audience'] as String?;
+          if (targetAudience != null &&
+              targetAudience.isNotEmpty &&
+              targetAudience != 'all' &&
+              targetAudience != 'members') {
+            continue;
+          }
+          final publishAt = a['publish_at']?.toString();
+          if (publishAt != null && publishAt.isNotEmpty && publishAt.compareTo(nowIso) > 0) {
+            continue; // Future scheduled
+          }
+          final expireAt = a['expire_at']?.toString();
+          if (expireAt != null && expireAt.isNotEmpty && expireAt.compareTo(nowIso) <= 0) {
+            continue; // Expired
+          }
+          final annBranchId = a['branch_id'] as String?;
+          if (annBranchId != null &&
+              annBranchId.isNotEmpty &&
+              effectiveBranchId != null &&
+              effectiveBranchId.isNotEmpty &&
+              annBranchId != effectiveBranchId) {
+            continue; // Dedicated to different branch
+          }
+
+          final annId = a['id']?.toString() ?? '';
+          final priority = (a['priority'] as num?)?.toInt() ?? 0;
+          final attachmentUrl = (a['attachment_url'] as String?) ?? (a['attachment_filename'] as String?);
+
+          announcementList.add(GymNotification(
+            id: 'ann_$annId',
+            title: a['title'] as String? ?? 'Club Bulletin',
+            message: a['content'] as String? ?? '',
+            timestamp: DateTime.tryParse(a['publish_at']?.toString() ?? a['created_at']?.toString() ?? '') ?? DateTime.now(),
+            type: 'announcement',
+            isRead: readAnnIds.contains(annId),
+            badge: priority > 0 ? 'IMPORTANT' : 'CLUB BULLETIN',
+            actionLabel: (attachmentUrl != null && attachmentUrl.isNotEmpty) ? 'View Details' : null,
+          ));
+        }
+      } catch (e) {
+        debugPrint('[INCLINE] fetchAnnouncements notice: $e');
+      }
+
+      // Merge & deduplicate by title and message
+      final combined = [...personalNotifs, ...announcementList];
+      final seen = <String>{};
+      final deduplicated = <GymNotification>[];
+      for (final n in combined) {
+        final key = '${n.title.trim().toLowerCase()}_${n.message.trim().toLowerCase()}';
+        if (!seen.contains(key)) {
+          seen.add(key);
+          deduplicated.add(n);
+        }
+      }
+
+      deduplicated.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return deduplicated;
     } catch (e) {
       debugPrint('[INCLINE] fetchNotifications notice: $e');
       return const [];
     }
   }
 
-  /// Fetches real-time unread notification count for the authenticated user
+  /// Fetches real-time unread notification count across personal notifications and club bulletins
   Future<int> fetchUnreadNotificationCount([String? userId]) async {
     try {
-      final targetUserId = userId ?? client.auth.currentUser?.id;
-      if (targetUserId == null) return 0;
-
-      final res = await client
-          .from('notifications')
-          .select('id')
-          .eq('user_id', targetUserId)
-          .eq('is_read', false);
-
-      return (res as List).length;
+      final notifs = await fetchNotifications(userId);
+      return notifs.where((n) => !n.isRead).length;
     } catch (e) {
       debugPrint('[INCLINE] fetchUnreadNotificationCount notice: $e');
       return 0;
     }
   }
 
-  /// Marks a single notification as read in the Supabase backend
+  /// Marks a single notification as read in Supabase or local announcement storage
   Future<bool> markNotificationAsRead(String notificationId) async {
     try {
+      if (notificationId.startsWith('ann_')) {
+        final annId = notificationId.substring(4);
+        final prefs = await SharedPreferences.getInstance();
+        final readAnnIds = (prefs.getStringList('incline_read_announcement_ids') ?? []).toSet();
+        readAnnIds.add(annId);
+        await prefs.setStringList('incline_read_announcement_ids', readAnnIds.toList());
+        return true;
+      }
+
       await client
           .from('notifications')
           .update({'is_read': true})
@@ -3793,17 +3889,47 @@ class SupabaseService {
     }
   }
 
-  /// Marks all unread notifications as read for the user in the Supabase backend
+  /// Marks all unread notifications and club bulletins as read
   Future<bool> markAllNotificationsAsRead([String? userId]) async {
     try {
       final targetUserId = userId ?? client.auth.currentUser?.id;
-      if (targetUserId == null) return false;
+      final curMember = _cachedCurrentMember;
+      final effectiveMemberId = curMember?.id;
 
-      await client
-          .from('notifications')
-          .update({'is_read': true})
-          .eq('user_id', targetUserId)
-          .eq('is_read', false);
+      // 1. Mark personal notifications read in Supabase
+      if (targetUserId != null) {
+        try {
+          await client
+              .from('notifications')
+              .update({'is_read': true})
+              .eq('user_id', targetUserId)
+              .eq('is_read', false);
+        } catch (_) {}
+      }
+      if (effectiveMemberId != null && effectiveMemberId != targetUserId) {
+        try {
+          await client
+              .from('notifications')
+              .update({'is_read': true})
+              .eq('user_id', effectiveMemberId)
+              .eq('is_read', false);
+        } catch (_) {}
+      }
+
+      // 2. Mark all loaded club announcements read in SharedPreferences
+      final allNotifs = await fetchNotifications(userId);
+      final annIds = allNotifs
+          .where((n) => n.id.startsWith('ann_'))
+          .map((n) => n.id.substring(4))
+          .toSet();
+
+      if (annIds.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        final readAnnIds = (prefs.getStringList('incline_read_announcement_ids') ?? []).toSet();
+        readAnnIds.addAll(annIds);
+        await prefs.setStringList('incline_read_announcement_ids', readAnnIds.toList());
+      }
+
       return true;
     } catch (e) {
       debugPrint('[INCLINE] markAllNotificationsAsRead notice: $e');
@@ -3811,32 +3937,93 @@ class SupabaseService {
     }
   }
 
-  /// Subscribes to real-time notification changes (INSERT, UPDATE, DELETE) for the authenticated user.
-  /// Mirrors web NotificationBell.tsx real-time Postgres changes channel.
+  /// Subscribes to real-time notification changes (INSERT, UPDATE, DELETE) for both:
+  /// 1. public.notifications (Personal & Broadcast notifications)
+  /// 2. public.announcements (Club bulletins sent to all members)
+  /// Automatically triggers heads-up local notifications on INSERT for immediate alert presentation.
   RealtimeChannel subscribeToNotifications({
     String? userId,
+    String? memberId,
     required void Function() onNotificationChanged,
   }) {
-    final targetUserId = userId ?? client.auth.currentUser?.id ?? '';
-    final channelName = 'user-notifications-$targetUserId-${DateTime.now().millisecondsSinceEpoch}';
+    final currentAuthUser = client.auth.currentUser;
+    final targetUserId = userId ?? currentAuthUser?.id ?? '';
+    final targetMemberId = memberId ?? _cachedCurrentMember?.id ?? '';
+    final channelName = 'incline-notifications-$targetUserId-${DateTime.now().millisecondsSinceEpoch}';
 
     final channel = client.channel(channelName);
+
+    // 1. Listen to public.notifications (Personal & Broadcast member notifications)
     channel.onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
       table: 'notifications',
-      filter: targetUserId.isNotEmpty
-          ? PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'user_id',
-              value: targetUserId,
-            )
-          : null,
       callback: (payload) {
         debugPrint('[INCLINE Realtime] Notification change received: ${payload.eventType}');
+        if (payload.eventType == PostgresChangeEvent.insert) {
+          try {
+            final record = payload.newRecord;
+            final notifUserId = record['user_id'] as String?;
+            final isForMe = notifUserId == null ||
+                (targetUserId.isNotEmpty && notifUserId == targetUserId) ||
+                (targetMemberId.isNotEmpty && notifUserId == targetMemberId);
+
+            if (isForMe) {
+              final title = record['title'] as String? ?? 'Incline Alert';
+              final message = record['message'] as String? ?? '';
+              if (message.isNotEmpty) {
+                PushNotificationService.instance.showLocalAlert(
+                  title: title,
+                  body: message,
+                  payloadRoute: '/notifications',
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint('[INCLINE Realtime] Notification alert parse notice: $e');
+          }
+        }
         onNotificationChanged();
       },
     );
+
+    // 2. Listen to public.announcements (Club bulletins sent to all members)
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'announcements',
+      callback: (payload) {
+        debugPrint('[INCLINE Realtime] Announcement change received: ${payload.eventType}');
+        if (payload.eventType == PostgresChangeEvent.insert) {
+          try {
+            final record = payload.newRecord;
+            final isActive = record['is_active'] as bool? ?? true;
+            final targetAudience = record['target_audience'] as String?;
+            final annBranchId = record['branch_id'] as String?;
+            final myBranchId = _cachedCurrentMember?.branchId;
+
+            final audienceOk = targetAudience == null || targetAudience == 'all' || targetAudience == 'members';
+            final branchOk = annBranchId == null || myBranchId == null || annBranchId == myBranchId;
+
+            if (isActive && audienceOk && branchOk) {
+              final title = record['title'] as String? ?? 'Club Bulletin';
+              final content = record['content'] as String? ?? '';
+              if (content.isNotEmpty) {
+                PushNotificationService.instance.showLocalAlert(
+                  title: '📢 $title',
+                  body: content,
+                  payloadRoute: '/notifications',
+                );
+              }
+            }
+          } catch (e) {
+            debugPrint('[INCLINE Realtime] Announcement alert parse notice: $e');
+          }
+        }
+        onNotificationChanged();
+      },
+    );
+
     channel.subscribe();
     return channel;
   }

@@ -24,6 +24,9 @@ class PushNotificationService {
   /// Optional listener triggered when member logs water from push notification action
   VoidCallback? onWaterLogged;
 
+  /// Optional listener triggered when member taps a push notification banner
+  ValueChanged<String>? onNotificationTap;
+
   /// Initializes notifications and requests authorization
   Future<bool> init() async {
     if (_isInitialized) return true;
@@ -48,6 +51,8 @@ class PushNotificationService {
           if (response.payload == 'water_log_250') {
             SupabaseService.instance.logWaterIntake(memberId: '', amountMl: 250);
             onWaterLogged?.call();
+          } else if (response.payload != null && response.payload!.isNotEmpty) {
+            onNotificationTap?.call(response.payload!);
           }
         },
       );

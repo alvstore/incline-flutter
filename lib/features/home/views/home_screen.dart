@@ -132,7 +132,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _subscribeToNotifications() {
     try {
+      final memberId = widget.member?.id ?? _currentMember?.id ?? SupabaseService.instance.cachedMember?.id;
       _notifChannel = SupabaseService.instance.subscribeToNotifications(
+        userId: SupabaseService.instance.currentUser?.id,
+        memberId: memberId,
         onNotificationChanged: () {
           if (mounted) {
             _refreshNotificationsOnly();
@@ -146,7 +149,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _refreshNotificationsOnly() async {
     try {
-      final notifs = await SupabaseService.instance.fetchNotifications();
+      final memberId = widget.member?.id ?? _currentMember?.id ?? SupabaseService.instance.cachedMember?.id;
+      final notifs = await SupabaseService.instance.fetchNotifications(memberId);
       final unreadCount = notifs.where((n) => !n.isRead).length;
       if (mounted) {
         setState(() {

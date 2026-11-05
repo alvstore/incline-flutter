@@ -153,6 +153,11 @@ class _InclineAppRootState extends ConsumerState<_InclineAppRoot> {
     }
 
     // Initialize Push Notifications & Deep Link Routing asynchronously in background
+    PushNotificationService.instance.onNotificationTap = (route) {
+      if (_router != null) {
+        _router!.push(route);
+      }
+    };
     PushNotificationService.instance.init().then((_) {
       PushNotificationService.instance.isHydrationRemindersEnabled().then((enabled) {
         if (enabled) {
