@@ -209,6 +209,7 @@ class SupabaseService {
   /// Sign out and clear cached auth credentials
   Future<void> signOut() async {
     try {
+      await PushNotificationService.instance.unsubscribeDeviceFromBackend();
       clearSessionCache();
       await client.auth.signOut();
     } catch (e) {

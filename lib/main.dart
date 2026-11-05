@@ -163,6 +163,7 @@ class _InclineAppRootState extends ConsumerState<_InclineAppRoot> {
           PushNotificationService.instance.scheduleHydrationReminders(enabled: true);
         }
       });
+      PushNotificationService.instance.initFirebaseMessaging(branchId: member?.branchId);
     });
 
     DeepLinkService.instance.init(

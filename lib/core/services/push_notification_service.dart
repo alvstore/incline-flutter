@@ -1,10 +1,22 @@
+import 'dart:convert';
+import 'dart:io';
 import '../models/models.dart';
 import '../theme/incline_colors.dart';
 import '../utils/ist_date_utils.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/env_config.dart';
 import 'supabase_service.dart';
+
+/// Top-level background handler for FCM messages when app is killed or in background.
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('[INCLINE FCM] Background message received: ${message.messageId}');
+}
 
 /// Push Notifications and Club Bulletin Service
 /// Handles incoming notifications, class reminders, suite confirmations, streak alerts,
@@ -17,6 +29,8 @@ class PushNotificationService {
   static const String _prefClassRemindersEnabled = 'incline_class_reminders_enabled';
   static const String _prefStreakAlertsEnabled = 'incline_streak_alerts_enabled';
   static const String _prefHydrationRemindersEnabled = 'incline_hydration_reminders_enabled';
+  static const String _prefFcmToken = 'incline_registered_fcm_token';
+  static const String _defaultBranchId = '11111111-1111-1111-1111-111111111111';
 
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
@@ -377,6 +391,194 @@ class PushNotificationService {
       );
     } catch (e) {
       debugPrint('[INCLINE] showLocalAlert error: $e');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // FIREBASE CLOUD MESSAGING (FCM) & SUPABASE WEB-PUSH SYNC
+  // ---------------------------------------------------------------------------
+
+  /// Initializes Firebase Cloud Messaging and registers the device FCM token
+  /// with the Supabase `web-push` edge function.
+  Future<void> initFirebaseMessaging({String? branchId}) async {
+    try {
+      // 1. Check if Firebase is initialized
+      if (Firebase.apps.isEmpty) {
+        try {
+          await Firebase.initializeApp();
+          FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+          debugPrint('[INCLINE FCM] Firebase app initialized successfully');
+        } catch (e) {
+          debugPrint('[INCLINE FCM] Firebase init note: $e (Awaiting google-services.json / GoogleService-Info.plist)');
+          // Try to sync any previously cached token if already present
+          final prefs = await SharedPreferences.getInstance();
+          final cachedToken = prefs.getString(_prefFcmToken);
+          if (cachedToken != null && cachedToken.isNotEmpty) {
+            await registerDeviceWithBackend(token: cachedToken, branchId: branchId);
+          }
+          return;
+        }
+      }
+
+      // 2. Request remote notification permissions
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+      debugPrint('[INCLINE FCM] Remote push authorization: ${settings.authorizationStatus}');
+
+      // 3. Fetch FCM token and register with web-push
+      // ignore: deprecated_member_use
+      final token = await messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        debugPrint('[INCLINE FCM] Acquired FCM token: $token');
+        await registerDeviceWithBackend(token: token, branchId: branchId);
+      }
+
+      // 4. Listen for token refreshes and re-register
+      // ignore: deprecated_member_use
+      messaging.onTokenRefresh.listen((newToken) {
+        debugPrint('[INCLINE FCM] FCM token refreshed: $newToken');
+        registerDeviceWithBackend(token: newToken, branchId: branchId);
+      });
+
+      // 5. Foreground push message reception
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('[INCLINE FCM] Foreground push received: ${message.notification?.title} - ${message.notification?.body}');
+        final title = message.notification?.title ?? message.data['title'] ?? 'INCLINE Alert';
+        final body = message.notification?.body ?? message.data['body'] ?? '';
+        final payloadRoute = message.data['route'] ?? message.data['click_action'] ?? '/notifications';
+        showLocalAlert(
+          title: title,
+          body: body,
+          payloadRoute: payloadRoute,
+        );
+      });
+
+      // 6. Push message tap when app in background
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('[INCLINE FCM] Notification tapped from background');
+        final payloadRoute = message.data['route'] ?? message.data['click_action'] ?? '/notifications';
+        onNotificationTap?.call(payloadRoute);
+      });
+
+      // 7. Initial message tap when app cold launched from terminated state
+      final initialMessage = await messaging.getInitialMessage();
+      if (initialMessage != null) {
+        debugPrint('[INCLINE FCM] Initial notification tapped on cold launch');
+        final payloadRoute = initialMessage.data['route'] ?? initialMessage.data['click_action'] ?? '/notifications';
+        onNotificationTap?.call(payloadRoute);
+      }
+    } catch (e) {
+      debugPrint('[INCLINE FCM] initFirebaseMessaging error: $e');
+    }
+  }
+
+  /// Sends device registration payload to `https://iyqqpbvnszyrrgerniog.supabase.co/functions/v1/web-push`
+  Future<bool> registerDeviceWithBackend({
+    required String token,
+    String? branchId,
+    String? platform,
+  }) async {
+    try {
+      Session? session;
+      try {
+        session = Supabase.instance.client.auth.currentSession;
+      } catch (_) {
+        session = null;
+      }
+
+      if (session == null) {
+        debugPrint('[INCLINE FCM] No active auth session; caching token for post-login registration');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_prefFcmToken, token);
+        return false;
+      }
+
+      final effectiveBranchId = branchId ?? _defaultBranchId;
+      final effectivePlatform = platform ?? (Platform.isIOS ? 'ios' : 'android');
+
+      final url = Uri.parse('${EnvConfig.supabaseUrl}/functions/v1/web-push');
+      final client = HttpClient();
+      final request = await client.postUrl(url);
+      request.headers.set('apikey', EnvConfig.supabaseAnonKey);
+      request.headers.set('Authorization', 'Bearer ${session.accessToken}');
+      request.headers.set('Content-Type', 'application/json');
+
+      final payload = jsonEncode({
+        'action': 'register_device',
+        'token': token,
+        'platform': effectivePlatform,
+        'branch_id': effectiveBranchId,
+      });
+
+      request.write(payload);
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+      client.close();
+
+      debugPrint('[INCLINE FCM] web-push register_device -> HTTP ${response.statusCode}: $responseBody');
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_prefFcmToken, token);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('[INCLINE FCM] registerDeviceWithBackend exception: $e');
+      return false;
+    }
+  }
+
+  /// Sends unsubscription payload to `web-push` when member signs out
+  Future<bool> unsubscribeDeviceFromBackend() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedToken = prefs.getString(_prefFcmToken);
+      if (savedToken == null || savedToken.isEmpty) return true;
+
+      Session? session;
+      try {
+        session = Supabase.instance.client.auth.currentSession;
+      } catch (_) {
+        session = null;
+      }
+
+      if (session == null) {
+        await prefs.remove(_prefFcmToken);
+        return true;
+      }
+
+      final url = Uri.parse('${EnvConfig.supabaseUrl}/functions/v1/web-push');
+      final client = HttpClient();
+      final request = await client.postUrl(url);
+      request.headers.set('apikey', EnvConfig.supabaseAnonKey);
+      request.headers.set('Authorization', 'Bearer ${session.accessToken}');
+      request.headers.set('Content-Type', 'application/json');
+
+      final payload = jsonEncode({
+        'action': 'unsubscribe',
+        'token': savedToken,
+      });
+
+      request.write(payload);
+      final response = await request.close();
+      final responseBody = await response.transform(utf8.decoder).join();
+      client.close();
+
+      debugPrint('[INCLINE FCM] web-push unsubscribe -> HTTP ${response.statusCode}: $responseBody');
+      await prefs.remove(_prefFcmToken);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (e) {
+      debugPrint('[INCLINE FCM] unsubscribeDeviceFromBackend exception: $e');
+      return false;
     }
   }
 }
