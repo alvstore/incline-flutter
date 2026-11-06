@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/services/push_notification_service.dart';
 import '../../core/services/session_manager.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/theme/incline_ui.dart';
@@ -215,6 +217,7 @@ class _LoginScreenState extends State<LoginScreen>
 
       SessionManager.instance.clearInvalidSession();
       HapticFeedback.heavyImpact();
+      unawaited(PushNotificationService.instance.syncDeviceRegistration());
       widget.onLoginSuccess();
     } catch (e) {
       _triggerErrorShake();

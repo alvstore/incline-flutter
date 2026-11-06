@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -341,6 +342,7 @@ class SupabaseService {
 
   Member? _cachedCurrentMember;
   Member? get cachedMember => _cachedCurrentMember;
+  void setCachedMember(Member? member) => _cachedCurrentMember = member;
 
   Future<Member?> fetchCurrentMember({bool forceRefresh = false}) async {
     final user = currentUser;
@@ -375,6 +377,7 @@ class SupabaseService {
         final member = Member.fromJson(res);
         _cachedCurrentMember = member;
         await OfflineSyncService.instance.cacheCurrentMember(member);
+        unawaited(PushNotificationService.instance.syncDeviceRegistration(branchId: member.branchId));
       }
     } catch (_) {}
   }
@@ -392,6 +395,7 @@ class SupabaseService {
         final member = Member.fromJson(res);
         _cachedCurrentMember = member;
         await OfflineSyncService.instance.cacheCurrentMember(member);
+        unawaited(PushNotificationService.instance.syncDeviceRegistration(branchId: member.branchId));
         return member;
       }
     } catch (e) {
@@ -516,9 +520,10 @@ class SupabaseService {
 
   /// Dynamically resolves the effective branch ID.
   /// 1. Uses explicit branchId if provided.
-  /// 2. Uses cached authenticated member's branchId.
-  /// 3. Queries member's branch_id from Supabase for current auth user.
-  /// 4. Queries the first active branch from public.branches.
+  /// 2. Uses cached in-memory authenticated member's branchId.
+  /// 3. Uses cached offline disk member's branchId.
+  /// 4. Queries member's branch_id from Supabase for current auth user.
+  /// 5. Queries the first active branch from public.branches.
   Future<String?> resolveEffectiveBranchId([String? branchId]) async {
     if (branchId != null && branchId.trim().isNotEmpty) {
       return branchId.trim();
@@ -527,6 +532,13 @@ class SupabaseService {
         _cachedCurrentMember!.branchId!.trim().isNotEmpty) {
       return _cachedCurrentMember!.branchId!.trim();
     }
+    try {
+      final diskMember = await OfflineSyncService.instance.getCachedCurrentMember();
+      if (diskMember?.branchId != null && diskMember!.branchId!.trim().isNotEmpty) {
+        return diskMember.branchId!.trim();
+      }
+    } catch (_) {}
+
     if (currentUser != null) {
       try {
         final res = await client

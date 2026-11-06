@@ -30,10 +30,15 @@ class PushNotificationService {
   static const String _prefStreakAlertsEnabled = 'incline_streak_alerts_enabled';
   static const String _prefHydrationRemindersEnabled = 'incline_hydration_reminders_enabled';
   static const String _prefFcmToken = 'incline_registered_fcm_token';
+  static const String _prefRegisteredBranchId = 'incline_registered_branch_id';
   static const String _defaultBranchId = '11111111-1111-1111-1111-111111111111';
 
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
+  String? _activeBranchId;
+
+  /// Currently active or registered branch ID for dynamic multi-branch notification routing
+  String? get activeBranchId => _activeBranchId;
 
   /// Optional listener triggered when member logs water from push notification action
   VoidCallback? onWaterLogged;
@@ -399,9 +404,13 @@ class PushNotificationService {
   // ---------------------------------------------------------------------------
 
   /// Initializes Firebase Cloud Messaging and registers the device FCM token
-  /// with the Supabase `web-push` edge function.
+  /// with the Supabase `web-push` edge function using dynamic multi-branch resolution.
   Future<void> initFirebaseMessaging({String? branchId}) async {
     try {
+      if (branchId != null && branchId.trim().isNotEmpty) {
+        _activeBranchId = branchId.trim();
+      }
+
       // 1. Check if Firebase is initialized
       if (Firebase.apps.isEmpty) {
         try {
@@ -414,7 +423,7 @@ class PushNotificationService {
           final prefs = await SharedPreferences.getInstance();
           final cachedToken = prefs.getString(_prefFcmToken);
           if (cachedToken != null && cachedToken.isNotEmpty) {
-            await registerDeviceWithBackend(token: cachedToken, branchId: branchId);
+            await registerDeviceWithBackend(token: cachedToken, branchId: _activeBranchId);
           }
           return;
         }
@@ -438,14 +447,14 @@ class PushNotificationService {
       final token = await messaging.getToken();
       if (token != null && token.isNotEmpty) {
         debugPrint('[INCLINE FCM] Acquired FCM token: $token');
-        await registerDeviceWithBackend(token: token, branchId: branchId);
+        await registerDeviceWithBackend(token: token, branchId: _activeBranchId);
       }
 
-      // 4. Listen for token refreshes and re-register
+      // 4. Listen for token refreshes and re-register dynamically
       // ignore: deprecated_member_use
-      messaging.onTokenRefresh.listen((newToken) {
+      messaging.onTokenRefresh.listen((newToken) async {
         debugPrint('[INCLINE FCM] FCM token refreshed: $newToken');
-        registerDeviceWithBackend(token: newToken, branchId: branchId);
+        await registerDeviceWithBackend(token: newToken, branchId: _activeBranchId);
       });
 
       // 5. Foreground push message reception
@@ -480,13 +489,18 @@ class PushNotificationService {
     }
   }
 
-  /// Sends device registration payload to `https://iyqqpbvnszyrrgerniog.supabase.co/functions/v1/web-push`
+  /// Sends device registration payload to `${EnvConfig.supabaseUrl}/functions/v1/web-push`
+  /// Dynamically resolves the effective branch ID to guarantee multi-branch support.
   Future<bool> registerDeviceWithBackend({
     required String token,
     String? branchId,
     String? platform,
   }) async {
     try {
+      if (branchId != null && branchId.trim().isNotEmpty) {
+        _activeBranchId = branchId.trim();
+      }
+
       Session? session;
       try {
         session = Supabase.instance.client.auth.currentSession;
@@ -494,14 +508,28 @@ class PushNotificationService {
         session = null;
       }
 
+      // Dynamically resolve multi-branch ID:
+      // Priority 1: explicitly passed branchId
+      // Priority 2: _activeBranchId in PushNotificationService
+      // Priority 3: SupabaseService dynamic resolution (in-memory member, disk member, members table, branches table)
+      // Priority 4: Fallback default branch UUID
+      String? dynamicBranchId;
+      try {
+        dynamicBranchId = await SupabaseService.instance.resolveEffectiveBranchId(branchId ?? _activeBranchId);
+      } catch (e) {
+        debugPrint('[INCLINE FCM] resolveEffectiveBranchId notice: $e');
+      }
+      final effectiveBranchId = dynamicBranchId ?? branchId ?? _activeBranchId ?? _defaultBranchId;
+      _activeBranchId = effectiveBranchId;
+
       if (session == null) {
-        debugPrint('[INCLINE FCM] No active auth session; caching token for post-login registration');
+        debugPrint('[INCLINE FCM] No active auth session; caching token ($token) and branch ($effectiveBranchId) for post-login registration');
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_prefFcmToken, token);
+        await prefs.setString(_prefRegisteredBranchId, effectiveBranchId);
         return false;
       }
 
-      final effectiveBranchId = branchId ?? _defaultBranchId;
       final effectivePlatform = platform ?? (Platform.isIOS ? 'ios' : 'android');
 
       final url = Uri.parse('${EnvConfig.supabaseUrl}/functions/v1/web-push');
@@ -523,11 +551,12 @@ class PushNotificationService {
       final responseBody = await response.transform(utf8.decoder).join();
       client.close();
 
-      debugPrint('[INCLINE FCM] web-push register_device -> HTTP ${response.statusCode}: $responseBody');
+      debugPrint('[INCLINE FCM] web-push register_device (branch: $effectiveBranchId, platform: $effectivePlatform) -> HTTP ${response.statusCode}: $responseBody');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_prefFcmToken, token);
+        await prefs.setString(_prefRegisteredBranchId, effectiveBranchId);
         return true;
       }
       return false;
@@ -535,6 +564,33 @@ class PushNotificationService {
       debugPrint('[INCLINE FCM] registerDeviceWithBackend exception: $e');
       return false;
     }
+  }
+
+  /// Synchronizes the cached or live FCM device token with the backend,
+  /// ensuring dynamic multi-branch binding is always up to date.
+  Future<bool> syncDeviceRegistration({String? branchId}) async {
+    try {
+      if (branchId != null && branchId.trim().isNotEmpty) {
+        _activeBranchId = branchId.trim();
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString(_prefFcmToken);
+
+      if ((token == null || token.isEmpty) && Firebase.apps.isNotEmpty) {
+        try {
+          // ignore: deprecated_member_use
+          token = await FirebaseMessaging.instance.getToken();
+        } catch (_) {}
+      }
+
+      if (token != null && token.isNotEmpty) {
+        return await registerDeviceWithBackend(token: token, branchId: branchId ?? _activeBranchId);
+      }
+    } catch (e) {
+      debugPrint('[INCLINE FCM] syncDeviceRegistration exception: $e');
+    }
+    return false;
   }
 
   /// Sends unsubscription payload to `web-push` when member signs out
@@ -553,6 +609,8 @@ class PushNotificationService {
 
       if (session == null) {
         await prefs.remove(_prefFcmToken);
+        await prefs.remove(_prefRegisteredBranchId);
+        _activeBranchId = null;
         return true;
       }
 
@@ -575,6 +633,8 @@ class PushNotificationService {
 
       debugPrint('[INCLINE FCM] web-push unsubscribe -> HTTP ${response.statusCode}: $responseBody');
       await prefs.remove(_prefFcmToken);
+      await prefs.remove(_prefRegisteredBranchId);
+      _activeBranchId = null;
       return response.statusCode >= 200 && response.statusCode < 300;
     } catch (e) {
       debugPrint('[INCLINE FCM] unsubscribeDeviceFromBackend exception: $e');

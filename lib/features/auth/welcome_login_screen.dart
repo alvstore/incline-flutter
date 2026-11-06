@@ -8,6 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/services/push_notification_service.dart';
 import '../../core/services/session_manager.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/theme/incline_ui.dart';
@@ -301,6 +302,7 @@ class _WelcomeLoginScreenState extends State<WelcomeLoginScreen>
 
       if (res.session != null || Supabase.instance.client.auth.currentUser != null) {
         SessionManager.instance.clearInvalidSession();
+        unawaited(PushNotificationService.instance.syncDeviceRegistration());
         if (mounted) {
           widget.onLoginSuccess();
         }
@@ -366,6 +368,7 @@ class _WelcomeLoginScreenState extends State<WelcomeLoginScreen>
       }
 
       SessionManager.instance.clearInvalidSession();
+      unawaited(PushNotificationService.instance.syncDeviceRegistration());
       if (mounted) {
         widget.onLoginSuccess();
       }
