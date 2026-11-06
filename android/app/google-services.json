@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1423494686",
+    "project_id": "incline-b00c5",
+    "storage_bucket": "incline-b00c5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1423494686:android:8b98a42ae9062d633ea80f",
+        "android_client_info": {
+          "package_name": "com.incline.incline_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6HI2g52uVK6a3HBN0GCYrGSN5L-x3kAI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

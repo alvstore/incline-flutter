@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/env_config.dart';
+import '../../firebase_options.dart';
 import 'supabase_service.dart';
 
 /// Top-level background handler for FCM messages when app is killed or in background.
@@ -414,11 +415,17 @@ class PushNotificationService {
       // 1. Check if Firebase is initialized
       if (Firebase.apps.isEmpty) {
         try {
-          await Firebase.initializeApp();
+          try {
+            await Firebase.initializeApp(
+              options: DefaultFirebaseOptions.currentPlatform,
+            );
+          } catch (_) {
+            await Firebase.initializeApp();
+          }
           FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
           debugPrint('[INCLINE FCM] Firebase app initialized successfully');
         } catch (e) {
-          debugPrint('[INCLINE FCM] Firebase init note: $e (Awaiting google-services.json / GoogleService-Info.plist)');
+          debugPrint('[INCLINE FCM] Firebase init note: $e');
           // Try to sync any previously cached token if already present
           final prefs = await SharedPreferences.getInstance();
           final cachedToken = prefs.getString(_prefFcmToken);
@@ -531,6 +538,28 @@ class PushNotificationService {
       }
 
       final effectivePlatform = platform ?? (Platform.isIOS ? 'ios' : 'android');
+
+      // Primary invocation method: Supabase functions.invoke
+      try {
+        final invokeRes = await Supabase.instance.client.functions.invoke(
+          'web-push',
+          body: {
+            'action': 'register_device',
+            'token': token,
+            'platform': effectivePlatform,
+            'branch_id': effectiveBranchId,
+          },
+        );
+        debugPrint('[INCLINE FCM] functions.invoke web-push status: ${invokeRes.status}');
+        if (invokeRes.status >= 200 && invokeRes.status < 300) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_prefFcmToken, token);
+          await prefs.setString(_prefRegisteredBranchId, effectiveBranchId);
+          return true;
+        }
+      } catch (e) {
+        debugPrint('[INCLINE FCM] functions.invoke notice: $e (falling back to direct client)');
+      }
 
       final url = Uri.parse('${EnvConfig.supabaseUrl}/functions/v1/web-push');
       final client = HttpClient();
