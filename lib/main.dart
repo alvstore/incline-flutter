@@ -17,12 +17,26 @@ import 'core/services/supabase_service.dart';
 import 'core/services/biometric_auth_service.dart';
 import 'core/services/deep_link_service.dart';
 import 'core/services/push_notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _installErrorHandling();
+
+  // Early Firebase & FCM background message handler registration before runApp
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    }
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    debugPrint('[INCLINE FCM] Early Firebase & background handler registered in main');
+  } catch (e) {
+    debugPrint('[INCLINE FCM] Early Firebase init notice: $e');
+  }
 
   // Initialize ThemeController
   await ThemeController.instance.init();

@@ -16,7 +16,41 @@ import 'supabase_service.dart';
 /// Top-level background handler for FCM messages when app is killed or in background.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('[INCLINE FCM] Background message received: ${message.messageId}');
+  debugPrint('[INCLINE FCM] Background message received: ${message.messageId} (data: ${message.data})');
+  try {
+    // If the message is a data-only payload or background notification without channel details,
+    // ensure a prominent heads-up local notification is shown.
+    final title = message.notification?.title ?? message.data['title'] ?? 'Incline Alert';
+    final body = message.notification?.body ?? message.data['body'] ?? message.data['message'] ?? '';
+    if (title.isNotEmpty || body.isNotEmpty) {
+      final fln = FlutterLocalNotificationsPlugin();
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      await fln.initialize(const InitializationSettings(android: androidInit));
+
+      const androidDetails = AndroidNotificationDetails(
+        'incline_club_alerts',
+        'Incline Club Alerts & Reminders',
+        channelDescription: 'Motivational cues, session reminders, and contrast suite bookings',
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        color: InclineColors.accentOrange,
+        playSound: true,
+        enableVibration: true,
+        visibility: NotificationVisibility.public,
+      );
+
+      await fln.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        const NotificationDetails(android: androidDetails),
+        payload: message.data['route'] ?? message.data['click_action'] ?? '/notifications',
+      );
+    }
+  } catch (e) {
+    debugPrint('[INCLINE FCM] Background local notification error: $e');
+  }
 }
 
 /// Push Notifications and Club Bulletin Service
@@ -375,6 +409,7 @@ class PushNotificationService {
         styleInformation: BigTextStyleInformation(body),
         playSound: true,
         enableVibration: true,
+        visibility: NotificationVisibility.public,
       );
 
       const darwinDetails = DarwinNotificationDetails(
@@ -447,6 +482,11 @@ class PushNotificationService {
         provisional: false,
         sound: true,
       );
+      await messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       debugPrint('[INCLINE FCM] Remote push authorization: ${settings.authorizationStatus}');
 
       // 3. Fetch FCM token and register with web-push
@@ -468,7 +508,7 @@ class PushNotificationService {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint('[INCLINE FCM] Foreground push received: ${message.notification?.title} - ${message.notification?.body}');
         final title = message.notification?.title ?? message.data['title'] ?? 'INCLINE Alert';
-        final body = message.notification?.body ?? message.data['body'] ?? '';
+        final body = message.notification?.body ?? message.data['body'] ?? message.data['message'] ?? '';
         final payloadRoute = message.data['route'] ?? message.data['click_action'] ?? '/notifications';
         showLocalAlert(
           title: title,
