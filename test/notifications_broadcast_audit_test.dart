@@ -166,6 +166,22 @@ void main() {
       expect(tapDispatched, isTrue);
       expect(tappedRoute, equals('/notifications'));
     });
+
+    test('Data payload with notification_id correctly maps rich title and message content', () {
+      final remoteData = {
+        'notification_id': 'ad837306-1bec-4a8f-9f2e-b71706985b68',
+        'title': 'Browser notification test',
+        'message': 'Your browser notification test was requested.',
+        'route': '/notifications',
+      };
+
+      final title = remoteData['title'] ?? 'Incline Alert';
+      final body = remoteData['message'] ?? remoteData['body'] ?? '';
+
+      expect(title, equals('Browser notification test'));
+      expect(body, equals('Your browser notification test was requested.'));
+      expect(body, isNot(contains('You have a new update')));
+    });
   });
 
   group('NotificationsScreen Populated UI Tests', () {

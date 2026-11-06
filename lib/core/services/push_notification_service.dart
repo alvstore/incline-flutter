@@ -13,21 +13,105 @@ import '../config/env_config.dart';
 import '../../firebase_options.dart';
 import 'supabase_service.dart';
 
+/// Resolves authentic notification details directly from Supabase REST API
+/// when an FCM payload only carries a notification_id or generic fallback text.
+Future<Map<String, dynamic>?> _fetchNotificationRecordById(String notificationId) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    String? accessToken;
+    String? refreshToken;
+
+    for (final key in prefs.getKeys()) {
+      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        final raw = prefs.getString(key);
+        if (raw != null) {
+          try {
+            final parsed = jsonDecode(raw);
+            accessToken = parsed['access_token'] as String?;
+            refreshToken = parsed['refresh_token'] as String?;
+            if (accessToken != null && accessToken.isNotEmpty) break;
+          } catch (_) {}
+        }
+      }
+    }
+
+    final client = HttpClient();
+
+    // Refresh token if access token is absent
+    if (refreshToken != null && (accessToken == null || accessToken.isEmpty)) {
+      try {
+        final refreshUri = Uri.parse('${EnvConfig.supabaseUrl}/auth/v1/token?grant_type=refresh_token');
+        final refReq = await client.postUrl(refreshUri);
+        refReq.headers.set('apikey', EnvConfig.supabaseAnonKey);
+        refReq.headers.set('Content-Type', 'application/json');
+        refReq.write(jsonEncode({'refresh_token': refreshToken}));
+        final refRes = await refReq.close();
+        final refBody = await refRes.transform(utf8.decoder).join();
+        if (refRes.statusCode >= 200 && refRes.statusCode < 300) {
+          final authData = jsonDecode(refBody);
+          accessToken = authData['access_token'] as String?;
+        }
+      } catch (e) {
+        debugPrint('[INCLINE FCM] Refresh token attempt notice: $e');
+      }
+    }
+
+    final uri = Uri.parse('${EnvConfig.supabaseUrl}/rest/v1/notifications?id=eq.$notificationId&limit=1');
+    final req = await client.getUrl(uri);
+    req.headers.set('apikey', EnvConfig.supabaseAnonKey);
+    if (accessToken != null && accessToken.isNotEmpty) {
+      req.headers.set('Authorization', 'Bearer $accessToken');
+    }
+    final res = await req.close();
+    final body = await res.transform(utf8.decoder).join();
+    client.close();
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final list = jsonDecode(body) as List;
+      if (list.isNotEmpty) {
+        return list.first as Map<String, dynamic>;
+      }
+    }
+  } catch (e) {
+    debugPrint('[INCLINE FCM] _fetchNotificationRecordById error: $e');
+  }
+  return null;
+}
+
 /// Top-level background handler for FCM messages when app is killed or in background.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('[INCLINE FCM] Background message received: ${message.messageId} (data: ${message.data})');
   try {
-    // If the message is a data-only payload or background notification without channel details,
-    // ensure a prominent heads-up local notification is shown.
-    final title = message.notification?.title ?? message.data['title'] ?? 'Incline Alert';
-    final body = message.notification?.body ?? message.data['body'] ?? message.data['message'] ?? '';
+    String title = message.notification?.title ?? message.data['title'] ?? 'Incline Alert';
+    String body = message.notification?.body ?? message.data['body'] ?? message.data['message'] ?? '';
+
+    // If body is generic fallback or empty, and notification_id is provided, resolve directly from Supabase
+    final notificationId = message.data['notification_id']?.toString();
+    final isGenericBody = body.isEmpty || 
+                          body.toLowerCase().contains('you have a new update') || 
+                          title.toLowerCase() == 'incline';
+
+    if (notificationId != null && notificationId.isNotEmpty && isGenericBody) {
+      final record = await _fetchNotificationRecordById(notificationId);
+      if (record != null) {
+        final recTitle = record['title']?.toString();
+        final recMessage = (record['message'] ?? record['body'])?.toString();
+        if (recTitle != null && recTitle.isNotEmpty) {
+          title = recTitle;
+        }
+        if (recMessage != null && recMessage.isNotEmpty) {
+          body = recMessage;
+        }
+      }
+    }
+
     if (title.isNotEmpty || body.isNotEmpty) {
       final fln = FlutterLocalNotificationsPlugin();
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       await fln.initialize(const InitializationSettings(android: androidInit));
 
-      const androidDetails = AndroidNotificationDetails(
+      final androidDetails = AndroidNotificationDetails(
         'incline_club_alerts',
         'Incline Club Alerts & Reminders',
         channelDescription: 'Motivational cues, session reminders, and contrast suite bookings',
@@ -35,16 +119,21 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         priority: Priority.high,
         icon: '@mipmap/ic_launcher',
         color: InclineColors.accentOrange,
+        styleInformation: BigTextStyleInformation(body),
         playSound: true,
         enableVibration: true,
         visibility: NotificationVisibility.public,
       );
 
+      final notifId = notificationId != null 
+          ? (notificationId.hashCode.abs() % 2147483647) 
+          : (DateTime.now().millisecondsSinceEpoch ~/ 1000);
+
       await fln.show(
-        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        notifId,
         title,
         body,
-        const NotificationDetails(android: androidDetails),
+        NotificationDetails(android: androidDetails),
         payload: message.data['route'] ?? message.data['click_action'] ?? '/notifications',
       );
     }
@@ -505,11 +594,31 @@ class PushNotificationService {
       });
 
       // 5. Foreground push message reception
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         debugPrint('[INCLINE FCM] Foreground push received: ${message.notification?.title} - ${message.notification?.body}');
-        final title = message.notification?.title ?? message.data['title'] ?? 'INCLINE Alert';
-        final body = message.notification?.body ?? message.data['body'] ?? message.data['message'] ?? '';
+        String title = message.notification?.title ?? message.data['title'] ?? 'INCLINE Alert';
+        String body = message.notification?.body ?? message.data['body'] ?? message.data['message'] ?? '';
         final payloadRoute = message.data['route'] ?? message.data['click_action'] ?? '/notifications';
+
+        final notificationId = message.data['notification_id']?.toString();
+        final isGenericBody = body.isEmpty || 
+                              body.toLowerCase().contains('you have a new update') || 
+                              title.toLowerCase() == 'incline';
+
+        if (notificationId != null && notificationId.isNotEmpty && isGenericBody) {
+          final record = await _fetchNotificationRecordById(notificationId);
+          if (record != null) {
+            final recTitle = record['title']?.toString();
+            final recMessage = (record['message'] ?? record['body'])?.toString();
+            if (recTitle != null && recTitle.isNotEmpty) {
+              title = recTitle;
+            }
+            if (recMessage != null && recMessage.isNotEmpty) {
+              body = recMessage;
+            }
+          }
+        }
+
         showLocalAlert(
           title: title,
           body: body,
